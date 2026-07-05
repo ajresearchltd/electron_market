@@ -5,21 +5,21 @@ import { Activity, Box, Cpu, Lightbulb, Link2, Settings, Wifi, Zap } from 'lucid
 import { createClient } from '../../../lib/supabase/client';
 
 const fallbackCategories = [
-  { Cat_ID: 1, Pic: null, Name: 'Microcontrollers', Text: 'MCUs and embedded control components.', icon: Cpu },
-  { Cat_ID: 2, Pic: null, Name: 'Sensors', Text: 'Measurement, detection, and monitoring sensors.', icon: Activity },
-  { Cat_ID: 3, Pic: null, Name: 'Power Supply', Text: 'Power modules, adapters, and regulators.', icon: Zap },
-  { Cat_ID: 4, Pic: null, Name: 'Connectors', Text: 'Board, cable, and industrial connectors.', icon: Link2 },
-  { Cat_ID: 5, Pic: null, Name: 'Industrial Automation', Text: 'Automation controls and factory components.', icon: Settings },
-  { Cat_ID: 6, Pic: null, Name: 'IoT & Wireless', Text: 'Wireless modules and connected-device parts.', icon: Wifi },
-  { Cat_ID: 7, Pic: null, Name: 'Optoelectronics', Text: 'LEDs, displays, and optical components.', icon: Lightbulb },
-  { Cat_ID: 8, Pic: null, Name: 'Passive Components', Text: 'Resistors, capacitors, inductors, and more.', icon: Box },
+  { cat_id: 'fallback-1', pic: null, name: 'Microcontrollers', text: 'MCUs and embedded control components.', icon: Cpu },
+  { cat_id: 'fallback-2', pic: null, name: 'Sensors', text: 'Measurement, detection, and monitoring sensors.', icon: Activity },
+  { cat_id: 'fallback-3', pic: null, name: 'Power Supply', text: 'Power modules, adapters, and regulators.', icon: Zap },
+  { cat_id: 'fallback-4', pic: null, name: 'Connectors', text: 'Board, cable, and industrial connectors.', icon: Link2 },
+  { cat_id: 'fallback-5', pic: null, name: 'Industrial Automation', text: 'Automation controls and factory components.', icon: Settings },
+  { cat_id: 'fallback-6', pic: null, name: 'IoT & Wireless', text: 'Wireless modules and connected-device parts.', icon: Wifi },
+  { cat_id: 'fallback-7', pic: null, name: 'Optoelectronics', text: 'LEDs, displays, and optical components.', icon: Lightbulb },
+  { cat_id: 'fallback-8', pic: null, name: 'Passive Components', text: 'Resistors, capacitors, inductors, and more.', icon: Box },
 ];
 
 type CategoryRow = {
-  Cat_ID: number | string;
-  Pic: string | null;
-  Name: string | null;
-  Text: string | null;
+  cat_id: string;
+  pic: string | null;
+  name: string | null;
+  text: string | null;
   icon?: typeof Cpu;
 };
 
@@ -36,9 +36,9 @@ export default function CategoriesSection() {
     const loadCategories = async () => {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from('Category')
-        .select('Cat_ID, Pic, Name, Text')
-        .order('Cat_ID', { ascending: true });
+        .from('category')
+        .select('cat_id, pic, name, text')
+        .order('name', { ascending: true });
 
       if (!active || error || !data || data.length === 0) {
         return;
@@ -67,11 +67,11 @@ export default function CategoriesSection() {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {categories.map((category) => {
             const Icon = category.icon ?? Box;
-            const pic = category.Pic?.trim();
-            const title = category.Name || 'Category';
+            const pic = category.pic?.trim();
+            const title = category.name || 'Category';
 
             return (
-              <article key={category.Cat_ID} className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
+              <article key={category.cat_id} className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
                 <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-blue-600">
                   {pic ? (
                     isImagePath(pic) ? (
@@ -84,7 +84,7 @@ export default function CategoriesSection() {
                   )}
                 </div>
                 <h3 className="text-base font-bold text-slate-950">{title}</h3>
-                {category.Text && <p className="mt-2 text-sm leading-6 text-slate-600">{category.Text}</p>}
+                {category.text && <p className="mt-2 text-sm leading-6 text-slate-600">{category.text}</p>}
               </article>
             );
           })}
