@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
 
 type CategoryRow = {
@@ -11,24 +11,43 @@ type CategoryRow = {
 };
 
 type CategoryForm = {
-  cat_id: string;
   pic: string;
   name: string;
   text: string;
 };
 
 const emptyForm: CategoryForm = {
-  cat_id: '',
   pic: '',
   name: '',
   text: '',
 };
+
+const acceptedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+const maxImageSize = 2 * 1024 * 1024;
+const bucketName = 'category-images';
+const bucketErrorMessage = 'Supabase Storage bucket category-images is missing or not public. Create it in Supabase Storage and allow public read access.';
 
 const toFormValue = (value: string | null) => value ?? '';
 const toNullable = (value: string) => {
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 };
+const isImagePath = (value: string) => value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/') || value.startsWith('blob:');
+const sanitizeFileName = (name: string) => name.toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^-+|-+$/g, '');
+
+function ImagePreview({ src }: { src: string }) {
+  return (
+    <div className="mt-3 flex aspect-video w-full max-w-sm items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+      {src && isImagePath(src) ? (
+        <img src={src} alt="Category preview" className="h-full w-full object-cover" />
+      ) : src ? (
+        <span className="px-4 text-center text-sm font-semibold text-slate-600">{src}</span>
+      ) : (
+        <span className="text-sm text-slate-400">No image selected</span>
+      )}
+    </div>
+  );
+}
 
 export default function AdminCategoriesPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -36,6 +55,10 @@ export default function AdminCategoriesPage() {
   const [newCategory, setNewCategory] = useState<CategoryForm>(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Omit<CategoryForm, 'cat_id'>>({ pic: '', name: '', text: '' });
+  const [createFile, setCreateFile] = useState<File | null>(null);
+  const [createPreview, setCreatePreview] = useState('');
+  const [editFile, setEditFile] = useState<File | null>(null);
+  const [editPreview, setEditPreview] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,31 +86,122 @@ export default function AdminCategoriesPage() {
     loadCategories();
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (createPreview.startsWith('blob:')) URL.revokeObjectURL(createPreview);
+      if (editPreview.startsWith('blob:')) URL.revokeObjectURL(editPreview);
+    };
+  }, [createPreview, editPreview]);
+
+  const validateImageFile = (file: File) => {
+    if (!acceptedImageTypes.includes(file.type)) {
+      return 'Please select a PNG, JPEG, WebP, or SVG image.';
+    }
+
+    if (file.size > maxImageSize) {
+      return 'Image must be 2 MB or smaller.';
+    }
+
+    return null;
+  };
+
+  const handleCreateFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setError(validationError);
+      event.target.value = '';
+      return;
+    }
+
+    if (createPreview.startsWith('blob:')) URL.revokeObjectURL(createPreview);
+    setError(null);
+    setCreateFile(file);
+    setCreatePreview(URL.createObjectURL(file));
+  };
+
+  const handleEditFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    if (!file) return;
+
+    const validationError = validateImageFile(file);
+    if (validationError) {
+      setError(validationError);
+      event.target.value = '';
+      return;
+    }
+
+    if (editPreview.startsWith('blob:')) URL.revokeObjectURL(editPreview);
+    setError(null);
+    setEditFile(file);
+    setEditPreview(URL.createObjectURL(file));
+  };
+
+  const uploadCategoryImage = async (file: File, catIdHint: string) => {
+    const extension = file.name.includes('.') ? file.name.split('.').pop() : 'img';
+    const baseName = sanitizeFileName(file.name.replace(/\.[^.]+$/, '')) || 'category-image';
+    const idPart = catIdHint.trim() || crypto.randomUUID();
+    const path = `${idPart}/${Date.now()}-${baseName}.${extension}`;
+
+    const { data, error: uploadError } = await supabase.storage
+      .from(bucketName)
+      .upload(path, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type,
+      });
+
+    if (uploadError) {
+      throw new Error(`${bucketErrorMessage} ${uploadError.message}`);
+    }
+
+    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
+    return publicUrlData.publicUrl || data.path;
+  };
+
+  const resetCreateImage = () => {
+    if (createPreview.startsWith('blob:')) URL.revokeObjectURL(createPreview);
+    setCreateFile(null);
+    setCreatePreview('');
+  };
+
+  const resetEditImage = () => {
+    if (editPreview.startsWith('blob:')) URL.revokeObjectURL(editPreview);
+    setEditFile(null);
+    setEditPreview('');
+  };
+
   const createCategory = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setSaving(true);
 
-    const payload: Partial<CategoryRow> = {
-      pic: toNullable(newCategory.pic),
-      name: toNullable(newCategory.name),
-      text: toNullable(newCategory.text),
-    };
+    try {
+      let picValue = toNullable(newCategory.pic);
+      if (createFile) {
+        picValue = await uploadCategoryImage(createFile, newCategory.name);
+      }
 
-    if (newCategory.cat_id.trim()) {
-      payload.cat_id = newCategory.cat_id.trim();
-    }
+      const payload: Partial<CategoryRow> = {
+        pic: picValue,
+        name: toNullable(newCategory.name),
+        text: toNullable(newCategory.text),
+      };
 
-    const { error: insertError } = await supabase.from('category').insert(payload);
 
-    if (insertError) {
-      setError(insertError.message);
-    } else {
+      const { error: insertError } = await supabase.from('category').insert(payload);
+      if (insertError) throw new Error(insertError.message);
+
       setNewCategory(emptyForm);
+      resetCreateImage();
       await loadCategories();
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : 'Failed to create category.');
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
   };
 
   const startEdit = (category: CategoryRow) => {
@@ -97,42 +211,49 @@ export default function AdminCategoriesPage() {
       name: toFormValue(category.name),
       text: toFormValue(category.text),
     });
+    resetEditImage();
     setError(null);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditForm({ pic: '', name: '', text: '' });
+    resetEditImage();
   };
 
   const saveEdit = async (catId: string) => {
     setSaving(true);
     setError(null);
 
-    const { error: updateError } = await supabase
-      .from('category')
-      .update({
-        pic: toNullable(editForm.pic),
-        name: toNullable(editForm.name),
-        text: toNullable(editForm.text),
-      })
-      .eq('cat_id', catId);
+    try {
+      let picValue = toNullable(editForm.pic);
+      if (editFile) {
+        picValue = await uploadCategoryImage(editFile, catId);
+      }
 
-    if (updateError) {
-      setError(updateError.message);
-    } else {
+      const { error: updateError } = await supabase
+        .from('category')
+        .update({
+          pic: picValue,
+          name: toNullable(editForm.name),
+          text: toNullable(editForm.text),
+        })
+        .eq('cat_id', catId);
+
+      if (updateError) throw new Error(updateError.message);
+
       cancelEdit();
       await loadCategories();
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : 'Failed to update category.');
+    } finally {
+      setSaving(false);
     }
-
-    setSaving(false);
   };
 
   const deleteCategory = async (catId: string) => {
     const confirmed = window.confirm(`Delete category ${catId}?`);
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setSaving(true);
     setError(null);
@@ -172,24 +293,24 @@ export default function AdminCategoriesPage() {
         <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 text-slate-950 shadow-xl shadow-blue-950/20">
           <h2 className="text-xl font-bold">Create Category</h2>
           <form onSubmit={createCategory} className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">cat_id</span>
-              <input
-                value={newCategory.cat_id}
-                onChange={(event) => setNewCategory((current) => ({ ...current, cat_id: event.target.value }))}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="Optional UUID; leave blank for default"
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-semibold text-slate-700">pic</span>
-              <input
-                value={newCategory.pic}
-                onChange={(event) => setNewCategory((current) => ({ ...current, pic: event.target.value }))}
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                placeholder="URL, path, or short icon text"
-              />
-            </label>
+            <div className="rounded-lg border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800 md:col-span-2">cat_id is generated automatically by the database and shown after creation.</div>
+
+            <div>
+              <label className="block">
+                <span className="text-sm font-semibold text-slate-700">pic</span>
+                <input
+                  value={newCategory.pic}
+                  onChange={(event) => setNewCategory((current) => ({ ...current, pic: event.target.value }))}
+                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                  placeholder="URL, path, or short icon text"
+                />
+              </label>
+              <label className="mt-3 inline-flex cursor-pointer rounded-md border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                Upload image
+                <input type="file" accept={acceptedImageTypes.join(',')} onChange={handleCreateFileChange} className="sr-only" />
+              </label>
+              <ImagePreview src={createPreview || newCategory.pic} />
+            </div>
             <label className="block">
               <span className="text-sm font-semibold text-slate-700">name</span>
               <input
@@ -236,7 +357,7 @@ export default function AdminCategoriesPage() {
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] border-collapse text-left text-sm">
+            <table className="w-full min-w-[980px] border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-slate-700">
                 <tr>
                   <th className="border-b border-slate-200 px-4 py-3 font-bold">cat_id</th>
@@ -263,13 +384,23 @@ export default function AdminCategoriesPage() {
                         <td className="border-b border-slate-100 px-4 py-3 font-mono text-xs font-semibold text-slate-900">{category.cat_id}</td>
                         <td className="border-b border-slate-100 px-4 py-3">
                           {isEditing ? (
-                            <input
-                              value={editForm.pic}
-                              onChange={(event) => setEditForm((current) => ({ ...current, pic: event.target.value }))}
-                              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
-                            />
+                            <div className="min-w-64">
+                              <input
+                                value={editForm.pic}
+                                onChange={(event) => setEditForm((current) => ({ ...current, pic: event.target.value }))}
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+                              />
+                              <label className="mt-3 inline-flex cursor-pointer rounded-md border border-blue-200 px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50">
+                                Upload image
+                                <input type="file" accept={acceptedImageTypes.join(',')} onChange={handleEditFileChange} className="sr-only" />
+                              </label>
+                              <ImagePreview src={editPreview || editForm.pic} />
+                            </div>
                           ) : (
-                            <span className="text-slate-700">{category.pic || '-'}</span>
+                            <div className="max-w-56">
+                              <ImagePreview src={category.pic || ''} />
+                              <p className="mt-2 break-all text-xs text-slate-500">{category.pic || '-'}</p>
+                            </div>
                           )}
                         </td>
                         <td className="border-b border-slate-100 px-4 py-3">

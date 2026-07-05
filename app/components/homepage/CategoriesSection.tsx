@@ -71,19 +71,19 @@ export default function CategoriesSection() {
             const title = category.name || 'Category';
 
             return (
-              <article key={category.cat_id} className="rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
-                <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-blue-600">
+              <article key={category.cat_id} className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
+                <div className="mx-auto mb-5 flex h-40 w-40 items-center justify-center overflow-hidden rounded-xl bg-blue-50 text-blue-600">
                   {pic ? (
                     isImagePath(pic) ? (
-                      <img src={pic} alt="" className="h-full w-full object-cover" />
+                      <img src={pic} alt="" className="h-32 w-32 object-contain" />
                     ) : (
                       <span className="text-sm font-bold text-blue-700">{pic}</span>
                     )
                   ) : (
-                    <Icon size={28} aria-hidden="true" />
+                    <Icon size={40} aria-hidden="true" />
                   )}
                 </div>
-                <h3 className="text-base font-bold text-slate-950">{title}</h3>
+                <h3 className="text-xl font-bold text-blue-950">{title}</h3>
                 {category.text && <p className="mt-2 text-sm leading-6 text-slate-600">{category.text}</p>}
               </article>
             );
@@ -93,3 +93,4 @@ export default function CategoriesSection() {
     </section>
   );
 }
+
