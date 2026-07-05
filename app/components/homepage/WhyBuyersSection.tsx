@@ -1,37 +1,40 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { CheckCircle, Globe2, Headphones, ShieldCheck, Timer } from 'lucide-react';
 
-// Mock benefits data - will later map to section_5_... fields
 const benefits = [
-  { id: 1, title: 'Fast Quotes', description: 'Average response in 24 hours' },
-  { id: 2, title: 'Verified Suppliers', description: 'All suppliers thoroughly vetted' },
-  { id: 3, title: 'Best Pricing', description: 'Compare prices from multiple suppliers' },
-  { id: 4, title: 'Quality Assured', description: 'Certification and compliance guaranteed' },
-  { id: 5, title: 'Global Reach', description: 'Suppliers in 150+ countries' },
-  { id: 6, title: '24/7 Support', description: 'Round-the-clock customer support' },
+  { title: 'Fast Quotes', description: 'Average supplier responses within 24 hours.', icon: Timer },
+  { title: 'Verified Suppliers', description: 'Supplier profiles are reviewed for marketplace quality.', icon: ShieldCheck },
+  { title: 'Quality Assured', description: 'Source from partners with documentation and compliance support.', icon: CheckCircle },
+  { title: 'Global Reach', description: 'Access sourcing options across 150+ countries.', icon: Globe2 },
+  { title: '24/7 Support', description: 'Help for urgent RFQs and supplier coordination.', icon: Headphones },
+  { title: 'Better Comparisons', description: 'Compare pricing, lead times, and terms in one workflow.', icon: CheckCircle },
 ];
 
 export default function WhyBuyersSection() {
   return (
-    <section className="section bg-white">
-      <div className="container-max">
-        <h2 className="text-3xl md:text-4xl font-bold mb-2">Why buyers choose ElectroMarket</h2>
-        <p className="text-gray-600 mb-12 max-w-2xl">
-          Join thousands of procurement professionals who trust our platform.
-        </p>
+    <section className="bg-white py-16 md:py-20">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Why buyers choose ElectroMarket</h2>
+          <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
+            Procurement teams get trusted suppliers, broad coverage, and clean sourcing workflows.
+          </p>
+        </div>
 
-        {/* Benefits Grid - Maps to: section_5_... fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {benefits.map((benefit) => (
-            <div key={benefit.id} className="flex gap-4">
-              <Check size={24} className="text-green-500 flex-shrink-0 mt-1" />
-              <div>
-                <h3 className="font-bold text-gray-900 mb-1">{benefit.title}</h3>
-                <p className="text-gray-600 text-sm">{benefit.description}</p>
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {benefits.map((benefit) => {
+            const Icon = benefit.icon;
+            return (
+              <article key={benefit.title} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md">
+                <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+                  <Icon size={24} aria-hidden="true" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-950">{benefit.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{benefit.description}</p>
+              </article>
+            );
+          })}
         </div>
       </div>
     </section>

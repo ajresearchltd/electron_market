@@ -1,27 +1,22 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
 export default function BottomCTASection() {
-  const router = useRouter();
-
   return (
-    <section className="py-16 md:py-20 bg-blue-600 text-white">
-      <div className="max-w-7xl mx-auto px-4 text-center">
-        <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to source smarter?</h2>
-        <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-          Join thousands of buyers and start receiving quotes from verified suppliers within 24 hours.
-        </p>
-
-        {/* CTA Button - Maps to: section_12_submit_rfq */}
-        <button
-          onClick={() => router.push('/create-request')}
-          className="bg-white text-blue-600 font-bold px-8 py-4 rounded-lg hover:bg-gray-100 transition inline-flex items-center gap-2 text-lg"
-        >
-          Upload BOM / Get Quotes
-          <ArrowRight size={20} />
-        </button>
+    <section className="bg-blue-600 py-16 text-white md:py-20">
+      <div className="mx-auto max-w-[1200px] px-4 text-center sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl rounded-2xl border border-white/15 bg-white/10 px-6 py-10 shadow-xl shadow-blue-900/20 md:px-10">
+          <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">Ready to source smarter?</h2>
+          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-blue-100">
+            Upload your BOM and start receiving quotes from verified suppliers.
+          </p>
+          <Link href="/create-request" className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-7 text-base font-bold text-blue-700 shadow-lg shadow-blue-950/20 hover:bg-blue-50">
+            Upload BOM / Get Quotes
+            <ArrowRight size={20} aria-hidden="true" />
+          </Link>
+        </div>
       </div>
     </section>
   );

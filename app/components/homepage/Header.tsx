@@ -1,100 +1,77 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Menu, X } from 'lucide-react';
+import { ChevronDown, Menu, X } from 'lucide-react';
 import { useState } from 'react';
 
+const navItems = [
+  { label: 'How it works', href: '#how-it-works' },
+  { label: 'Suppliers', href: '#suppliers' },
+  { label: 'Categories', href: '#categories' },
+  { label: 'Resources', href: '#resources' },
+  { label: 'About us', href: '#about' },
+];
+
 export default function Header() {
-  const router = useRouter();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-50 hero-gradient border-b border-blue-900/30">
-      <div className="container-max">
-        <div className="py-4 flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="text-2xl font-bold text-white hover:text-blue-200 transition">
-            ElectroMarket
-          </Link>
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#071f49] text-white shadow-sm">
+      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="text-xl font-bold tracking-tight text-white">
+          ElectroMarket
+        </Link>
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <a href="#how-it-works" className="text-blue-100 hover:text-white text-sm font-medium transition">
-              How it works
+        <nav className="hidden items-center gap-7 lg:flex" aria-label="Main navigation">
+          {navItems.map((item) => (
+            <a key={item.href} href={item.href} className="text-sm font-medium text-blue-100 hover:text-white">
+              {item.label}
             </a>
-            <a href="#suppliers" className="text-blue-100 hover:text-white text-sm font-medium transition">
-              Suppliers
-            </a>
-            <a href="#categories" className="text-blue-100 hover:text-white text-sm font-medium transition">
-              Categories
-            </a>
-            <a href="#resources" className="text-blue-100 hover:text-white text-sm font-medium transition">
-              Resources
-            </a>
-            <a href="#about" className="text-blue-100 hover:text-white text-sm font-medium transition">
-              About us
-            </a>
-          </nav>
+          ))}
+        </nav>
 
-          {/* Right Actions */}
-          <div className="hidden md:flex items-center gap-4">
-            <select className="text-sm text-white bg-blue-800/40 border border-blue-700 rounded px-3 py-1.5 hover:bg-blue-800/60 transition">
-              <option>EN</option>
-              <option>ES</option>
-              <option>FR</option>
-            </select>
-            <Link
-              href="/login"
-              className="text-sm font-medium text-blue-100 hover:text-white transition"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              className="text-sm font-medium bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-            >
-              Sign up
-            </Link>
-          </div>
-
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden text-white"
-          >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        <div className="hidden items-center gap-3 lg:flex">
+          <button type="button" className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-medium text-blue-50 hover:bg-white/10">
+            EN
+            <ChevronDown size={14} aria-hidden="true" />
           </button>
+          <Link href="/login" className="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-blue-100 hover:text-white">
+            Log in
+          </Link>
+          <Link href="/signup" className="inline-flex h-9 items-center rounded-md bg-[#2f80ff] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#4d95ff]">
+            Sign up
+          </Link>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/15 text-white hover:bg-white/10 lg:hidden"
+          aria-label="Toggle navigation menu"
+          aria-expanded={open}
+        >
+          {open ? <X size={22} /> : <Menu size={22} />}
+        </button>
       </div>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <nav className="md:hidden bg-blue-900/80 backdrop-blur border-t border-blue-800 p-4 space-y-4">
-          <a href="#how-it-works" className="block text-blue-100 hover:text-white transition">
-            How it works
-          </a>
-          <a href="#suppliers" className="block text-blue-100 hover:text-white transition">
-            Suppliers
-          </a>
-          <a href="#categories" className="block text-blue-100 hover:text-white transition">
-            Categories
-          </a>
-          <a href="#resources" className="block text-blue-100 hover:text-white transition">
-            Resources
-          </a>
-          <a href="#about" className="block text-blue-100 hover:text-white transition">
-            About us
-          </a>
-          <div className="flex gap-2 pt-2">
-            <Link href="/login" className="flex-1 text-sm font-medium border border-blue-400 text-blue-100 px-4 py-2 rounded-lg text-center hover:bg-blue-800/50 transition">
-              Log in
-            </Link>
-            <Link href="/signup" className="flex-1 text-sm font-medium bg-blue-600 text-white px-4 py-2 rounded-lg text-center hover:bg-blue-700 transition">
-              Sign up
-            </Link>
-          </div>
-        </nav>
+      {open && (
+        <div className="border-t border-white/10 bg-[#071f49] lg:hidden">
+          <nav className="mx-auto max-w-[1200px] space-y-4 px-4 py-5 sm:px-6 lg:px-8" aria-label="Mobile navigation">
+            {navItems.map((item) => (
+              <a key={item.href} href={item.href} className="block text-sm font-medium text-blue-100 hover:text-white">
+                {item.label}
+              </a>
+            ))}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <Link href="/login" className="rounded-md border border-white/20 px-4 py-2.5 text-center text-sm font-semibold text-blue-50 hover:bg-white/10">
+                Log in
+              </Link>
+              <Link href="/signup" className="rounded-md bg-[#2f80ff] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#4d95ff]">
+                Sign up
+              </Link>
+            </div>
+          </nav>
+        </div>
       )}
     </header>
   );

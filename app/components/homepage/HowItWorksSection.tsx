@@ -1,57 +1,33 @@
 'use client';
 
-import { CheckCircle, Brain } from 'lucide-react';
-
-// Mock process steps - will later map to section_3_... and section_4_... fields
 const steps = [
-  { id: 1, title: 'Upload BOM', description: 'Submit your bill of materials' },
-  { id: 2, title: 'AI Analysis', description: 'Smart component matching' },
-  { id: 3, title: 'Suppliers Quote', description: 'Instant supplier responses' },
-  { id: 4, title: 'Compare & Order', description: 'Select best offers' },
+  { number: '01', title: 'Upload BOM', description: 'Submit your bill of materials and sourcing requirements.' },
+  { number: '02', title: 'Smart Matching', description: 'Parts are matched with verified suppliers and alternatives.' },
+  { number: '03', title: 'Receive Quotes', description: 'Compare supplier responses, lead times, and pricing.' },
+  { number: '04', title: 'Order Confidently', description: 'Choose the best offer and move from RFQ to delivery.' },
 ];
 
 export default function HowItWorksSection() {
   return (
-    <section id="how-it-works" className="py-16 md:py-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">How it works</h2>
-        <p className="text-gray-600 mb-12 max-w-2xl">
-          Our streamlined process gets you quotes in hours, not days.
-        </p>
+    <section id="how-it-works" className="bg-slate-50 py-16 md:py-20">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">How it works</h2>
+          <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
+            A simple workflow that gets buyers from part list to supplier quotes fast.
+          </p>
+        </div>
 
-        <div className="grid md:grid-cols-3 gap-12">
-          {/* Steps - Maps to: section_3_... and section_4_... fields */}
-          <div className="md:col-span-2">
-            <div className="space-y-8">
-              {steps.map((step, index) => (
-                <div key={step.id} className="flex gap-6">
-                  <div className="flex flex-col items-center">
-                    <div className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-                      {step.id}
-                    </div>
-                    {index < steps.length - 1 && (
-                      <div className="w-1 h-16 bg-blue-200 mt-2"></div>
-                    )}
-                  </div>
-                  <div className="pt-1">
-                    <h3 className="text-xl font-bold text-gray-900">{step.title}</h3>
-                    <p className="text-gray-600 mt-1">{step.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* AI-Powered Card */}
-          <div className="md:col-span-1">
-            <div className="bg-white p-8 rounded-lg border-2 border-blue-600 h-full flex flex-col justify-center">
-              <Brain size={40} className="text-blue-600 mb-4" />
-              <h3 className="text-2xl font-bold mb-2">AI-Powered</h3>
-              <p className="text-gray-600">
-                BOM Analysis with instant supplier matching
-              </p>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          {steps.map((step) => (
+            <article key={step.number} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md">
+              <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white">
+                {step.number}
+              </div>
+              <h3 className="text-lg font-bold text-slate-950">{step.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-slate-600">{step.description}</p>
+            </article>
+          ))}
         </div>
       </div>
     </section>

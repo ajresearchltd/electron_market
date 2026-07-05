@@ -2,75 +2,43 @@
 
 import { Star } from 'lucide-react';
 
-// Mock customer reviews - will later map to customer_say table
 const reviews = [
-  {
-    id: 1,
-    name: 'John Chen',
-    company: 'TechStart Industries',
-    rating: 5,
-    text: 'ElectroMarket saved us 40% on component sourcing. Highly recommended!',
-    avatar: '👨‍💼',
-  },
-  {
-    id: 2,
-    name: 'Maria Garcia',
-    company: 'Innovation Labs',
-    rating: 5,
-    text: 'The fastest quotes I\'ve ever received. Their supplier network is incredible.',
-    avatar: '👩‍💼',
-  },
-  {
-    id: 3,
-    name: 'Ahmed Hassan',
-    company: 'Middle East Electronics',
-    rating: 5,
-    text: 'Professional service, reliable suppliers, and transparent pricing. Perfect!',
-    avatar: '👨‍💼',
-  },
-  {
-    id: 4,
-    name: 'Sophie Dubois',
-    company: 'European Manufacturing',
-    rating: 4,
-    text: 'Great platform for finding quality components. Support team is very helpful.',
-    avatar: '👩‍💼',
-  },
+  { name: 'John Chen', company: 'TechStart Industries', rating: 5, text: 'ElectroMarket saved us weeks of sourcing time and helped compare supplier options clearly.', initials: 'JC' },
+  { name: 'Maria Garcia', company: 'Innovation Labs', rating: 5, text: 'The RFQ process is fast, organized, and much easier than emailing suppliers one by one.', initials: 'MG' },
+  { name: 'Ahmed Hassan', company: 'Middle East Electronics', rating: 5, text: 'Reliable suppliers, transparent communication, and useful quote comparisons.', initials: 'AH' },
+  { name: 'Sophie Dubois', company: 'European Manufacturing', rating: 4, text: 'A practical platform for component sourcing when timelines are tight.', initials: 'SD' },
 ];
 
 export default function CustomerReviewsSection() {
   return (
-    <section className="py-16 md:py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4">
-        <h2 className="text-3xl md:text-4xl font-bold mb-4">Customer Reviews</h2>
-        <p className="text-gray-600 mb-12 max-w-2xl">
-          Hear from procurement professionals who use ElectroMarket daily.
-        </p>
+    <section className="bg-white py-16 md:py-20">
+      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto mb-12 max-w-2xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Customer Reviews</h2>
+          <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
+            Procurement teams use ElectroMarket to simplify sourcing and supplier comparison.
+          </p>
+        </div>
 
-        {/* Reviews Grid - Maps to: customer_say table */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {reviews.map((review) => (
-            <div key={review.id} className="bg-gray-50 p-6 rounded-lg border border-gray-200">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="text-4xl">{review.avatar}</div>
+            <article key={review.name} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md">
+              <div className="mb-5 flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-700">
+                  {review.initials}
+                </div>
                 <div>
-                  <h3 className="font-bold text-gray-900">{review.name}</h3>
-                  <p className="text-gray-600 text-sm">{review.company}</p>
+                  <h3 className="font-bold text-slate-950">{review.name}</h3>
+                  <p className="text-sm text-slate-500">{review.company}</p>
                 </div>
               </div>
-
-              <div className="flex gap-1 mb-3">
-                {[...Array(5)].map((_, i) => (
-                  <Star
-                    key={i}
-                    size={16}
-                    className={i < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}
-                  />
+              <div className="mb-4 flex gap-1">
+                {[...Array(5)].map((_, index) => (
+                  <Star key={index} size={16} className={index < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'} />
                 ))}
               </div>
-
-              <p className="text-gray-700">{review.text}</p>
-            </div>
+              <p className="text-sm leading-6 text-slate-700">{review.text}</p>
+            </article>
           ))}
         </div>
       </div>

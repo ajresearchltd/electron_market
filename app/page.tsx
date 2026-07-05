@@ -9,8 +9,8 @@ import SuppliersNetworkSection from './components/homepage/SuppliersNetworkSecti
 import OfficialSuppliersSection from './components/homepage/OfficialSuppliersSection';
 import ProcessSection from './components/homepage/ProcessSection';
 import IndustrySolutionsSection from './components/homepage/IndustrySolutionsSection';
-import CustomerReviewsSection from './components/homepage/CustomerReviewsSection';
 import NumbersSection from './components/homepage/NumbersSection';
+import CustomerReviewsSection from './components/homepage/CustomerReviewsSection';
 import BottomCTASection from './components/homepage/BottomCTASection';
 import Footer from './components/homepage/Footer';
 
@@ -21,7 +21,7 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <main>
+    <main className="min-h-screen bg-white text-slate-950">
       <Header />
       <HeroSection />
       <CategoriesSection />
