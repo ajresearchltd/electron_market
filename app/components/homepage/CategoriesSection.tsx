@@ -64,30 +64,32 @@ export default function CategoriesSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {categories.map((category) => {
-            const Icon = category.icon ?? Box;
-            const pic = category.pic?.trim();
-            const title = category.name || 'Category';
+        <div className="overflow-x-auto pb-2">
+          <div className="flex min-w-max gap-4">
+            {categories.map((category) => {
+              const Icon = category.icon ?? Box;
+              const pic = category.pic?.trim();
+              const title = category.name || 'Category';
 
-            return (
-              <article key={category.cat_id} className="flex min-h-[300px] flex-col items-center justify-center rounded-xl border border-slate-200 bg-white p-6 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
-                <div className="mx-auto mb-5 flex h-40 w-40 items-center justify-center overflow-hidden rounded-xl bg-blue-50 text-blue-600">
-                  {pic ? (
-                    isImagePath(pic) ? (
-                      <img src={pic} alt="" className="h-32 w-32 object-contain" />
+              return (
+                <article key={category.cat_id} className="flex h-[220px] w-[180px] flex-shrink-0 flex-col items-center rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
+                  <div className="flex h-[145px] w-full items-center justify-center overflow-hidden rounded-lg bg-blue-50 text-blue-600">
+                    {pic ? (
+                      isImagePath(pic) ? (
+                        <img src={pic} alt="" className="h-full w-full object-contain p-3" />
+                      ) : (
+                        <span className="text-sm font-bold text-blue-700">{pic}</span>
+                      )
                     ) : (
-                      <span className="text-sm font-bold text-blue-700">{pic}</span>
-                    )
-                  ) : (
-                    <Icon size={40} aria-hidden="true" />
-                  )}
-                </div>
-                <h3 className="text-xl font-bold text-blue-950">{title}</h3>
-                {category.text && <p className="mt-2 text-sm leading-6 text-slate-600">{category.text}</p>}
-              </article>
-            );
-          })}
+                      <Icon size={40} aria-hidden="true" />
+                    )}
+                  </div>
+                  <h3 className="mt-2 text-sm font-semibold leading-5 text-blue-950">{title}</h3>
+                  {category.text && <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-600">{category.text}</p>}
+                </article>
+              );
+            })}
+          </div>
         </div>
       </div>
     </section>

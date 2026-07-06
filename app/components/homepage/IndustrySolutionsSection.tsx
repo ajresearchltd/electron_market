@@ -1,20 +1,66 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Building2, Car, Factory, HeartPulse, RadioTower, Zap } from 'lucide-react';
+import { createClient } from '../../../lib/supabase/client';
 
-const solutions = [
-  { title: 'Industrial Automation', description: 'PLCs, controllers, sensors, and automation components.', icon: Factory },
-  { title: 'Smart Cities', description: 'IoT devices, connectivity solutions, and smart infrastructure.', icon: Building2 },
-  { title: 'Renewable Energy', description: 'Solar inverters, charge controllers, and power management.', icon: Zap },
-  { title: 'Medical Devices', description: 'Diagnostic equipment, monitoring systems, and biomedical components.', icon: HeartPulse },
-  { title: 'Automotive Electronics', description: 'Vehicle control systems, sensors, and communication modules.', icon: Car },
-  { title: 'Consumer Electronics', description: 'Smart home devices, wearables, and portable electronics.', icon: RadioTower },
+type IndustrySolutionRow = {
+  ind_id: string;
+  title: string | null;
+  text: string | null;
+  pic: string | null;
+  icon?: typeof Factory;
+};
+
+const fallbackSolutions: IndustrySolutionRow[] = [
+  { ind_id: 'fallback-1', title: 'Industrial Automation', text: 'PLCs, controllers, sensors, and automation components.', pic: null, icon: Factory },
+  { ind_id: 'fallback-2', title: 'Smart Cities', text: 'IoT devices, connectivity solutions, and smart infrastructure.', pic: null, icon: Building2 },
+  { ind_id: 'fallback-3', title: 'Renewable Energy', text: 'Solar inverters, charge controllers, and power management.', pic: null, icon: Zap },
+  { ind_id: 'fallback-4', title: 'Medical Devices', text: 'Diagnostic equipment, monitoring systems, and biomedical components.', pic: null, icon: HeartPulse },
+  { ind_id: 'fallback-5', title: 'Automotive Electronics', text: 'Vehicle control systems, sensors, and communication modules.', pic: null, icon: Car },
+  { ind_id: 'fallback-6', title: 'Consumer Electronics', text: 'Smart home devices, wearables, and portable electronics.', pic: null, icon: RadioTower },
 ];
 
+const isImagePath = (value: string) => value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/');
+
 export default function IndustrySolutionsSection() {
+  const [solutions, setSolutions] = useState<IndustrySolutionRow[]>(fallbackSolutions);
+
+  useEffect(() => {
+    let active = true;
+    const supabase = createClient();
+
+    const loadSolutions = async () => {
+      const { data, error } = await supabase
+        .from('industry_solution')
+        .select('ind_id, title, text, pic')
+        .order('title', { ascending: true });
+
+      if (!active) return;
+
+      if (error) {
+        console.warn('industry_solution lookup failed.', error.message);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        return;
+      }
+
+      setSolutions((data as IndustrySolutionRow[]).map((solution) => ({
+        ...solution,
+      })));
+    };
+
+    loadSolutions();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <section className="bg-slate-50 py-16 md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Industry Solutions</h2>
           <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
@@ -22,16 +68,27 @@ export default function IndustrySolutionsSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           {solutions.map((solution) => {
-            const Icon = solution.icon;
+            const Icon = solution.icon ?? Factory;
+            const pic = solution.pic?.trim();
             return (
-              <article key={solution.title} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md">
-                <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
-                  <Icon size={28} aria-hidden="true" />
+              <article key={solution.ind_id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md">
+                <div className="flex h-[250px] w-full items-center justify-center overflow-hidden bg-blue-50 text-blue-600">
+                  {pic ? (
+                    isImagePath(pic) ? (
+                      <img src={pic} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-sm font-bold text-blue-700">{pic}</span>
+                    )
+                  ) : (
+                    <Icon size={34} aria-hidden="true" />
+                  )}
                 </div>
-                <h3 className="text-lg font-bold text-slate-950">{solution.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{solution.description}</p>
+                <div className="p-3">
+                  <h3 className="text-base font-semibold text-slate-950">{solution.title || 'Industry Solution'}</h3>
+                  {solution.text && <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600">{solution.text}</p>}
+                </div>
               </article>
             );
           })}

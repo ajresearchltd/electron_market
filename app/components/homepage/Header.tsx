@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import { ChevronDown, Menu, X } from 'lucide-react';
@@ -62,7 +62,7 @@ export default function Header() {
           <Link href="/login" className="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-blue-100 hover:text-white">
             Log in
           </Link>
-          <Link href="/signup" className="inline-flex h-9 items-center rounded-md bg-[#2f80ff] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#4d95ff]">
+          <Link href="/register/customer" className="inline-flex h-9 items-center rounded-md bg-[#2f80ff] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#4d95ff]">
             Sign up
           </Link>
         </div>
@@ -90,7 +90,7 @@ export default function Header() {
               <Link href="/login" className="rounded-md border border-white/20 px-4 py-2.5 text-center text-sm font-semibold text-blue-50 hover:bg-white/10">
                 Log in
               </Link>
-              <Link href="/signup" className="rounded-md bg-[#2f80ff] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#4d95ff]">
+              <Link href="/register/customer" className="rounded-md bg-[#2f80ff] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#4d95ff]">
                 Sign up
               </Link>
             </div>
@@ -100,3 +100,4 @@ export default function Header() {
     </header>
   );
 }
+
