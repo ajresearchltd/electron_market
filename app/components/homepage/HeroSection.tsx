@@ -25,7 +25,6 @@ export default function HeroSection() {
   const [title, setTitle] = useState('Global Marketplace for Electronic Components and Equipment');
   const [subtitle, setSubtitle] = useState('Upload your BOM, get quotes from verified suppliers and source components faster and smarter.');
   const [getBomHref, setGetBomHref] = useState('/create-request');
-  const [supplierHref, setSupplierHref] = useState('#suppliers');
   const [stats, setStats] = useState(fallbackStats);
 
   useEffect(() => {
@@ -37,7 +36,6 @@ export default function HeroSection() {
       setTitle(row.section_1_title_of_site || 'Global Marketplace for Electronic Components and Equipment');
       setSubtitle(row.section_1_subtitle_of_site || 'Upload your BOM, get quotes from verified suppliers and source components faster and smarter.');
       setGetBomHref(row.section_1_link_to_get_bom || '/create-request');
-      setSupplierHref(row.section_1_link_to_supplier || '#suppliers');
       setStats(fallbackStats.map((stat, index) => parseStat(row[`section_1_under_title_${index + 1}`], stat)));
     };
 
@@ -69,8 +67,8 @@ export default function HeroSection() {
               Upload BOM / Get Quotes
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
-            <Link href={supplierHref} className="inline-flex h-12 items-center justify-center rounded-md border border-white/35 bg-white/[0.08] px-6 text-base font-semibold text-white hover:bg-white/[0.15]">
-              Find Suppliers
+            <Link href="/register/supplier" className="inline-flex h-12 items-center justify-center rounded-md border border-white/35 bg-white/[0.08] px-6 text-base font-semibold text-white hover:bg-white/[0.15]">
+              Register as supplier
             </Link>
           </div>
 
@@ -92,3 +90,4 @@ export default function HeroSection() {
     </section>
   );
 }
+

@@ -1,11 +1,18 @@
 ﻿import LoginClient from './LoginClient';
 
-export default function LoginPage({
+type LoginSearchParams = {
+  error?: string | string[];
+};
+
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams?: { error?: string | string[] };
+  searchParams?: Promise<LoginSearchParams>;
 }) {
-  const error = Array.isArray(searchParams?.error) ? searchParams?.error[0] : searchParams?.error;
+  const params = await searchParams;
+  const rawError = params?.error;
+  const error = Array.isArray(rawError) ? rawError[0] : rawError;
   const initialError = error === 'missing-role' ? 'Account role is missing. Please contact support.' : '';
+
   return <LoginClient initialError={initialError} />;
 }

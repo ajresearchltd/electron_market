@@ -1,894 +1,495 @@
-# Database Structure
-
-## Project Name
-
-Electron Market
-
-## Purpose
-
-This document describes the database structure for the Electron Market project.
-
-The project is created from scratch.
-
-The database includes two main areas:
-
-1. Product catalog
-2. RFQ and supplier quotation system
-
-The first development stage should focus on the RFQ system, but the product catalog structure is also included because RFQ requests and products will later be connected.
-
----
-
-# 1. Core User and Supplier Tables
-
-These tables are required because products, RFQ records, messages and supplier quotations refer to users and suppliers.
-
----
-
-## Table: Users
-
-Stores all system users.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| User_ID | UUID |
-| Email | Text |
-| Full_Name | Text |
-| Role | Text |
-| Company_ID | Link |
-| Phone | Text |
-| User_Status | Text |
-| Created_Date | DateTime |
-| Updated_Date | DateTime |
-
-### Primary Key
-
-User_ID
-
-### Role Values
-
-- buyer
-- supplier
-- admin
-
-### Notes
-
-Supabase Auth may be used for authentication.
-
-The `Users` table stores additional profile and role information.
-
----
-
-## Table: Suppliers
-
-Stores supplier companies.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Supplier_ID | UUID |
-| Supplier_Name | Text |
-| Company_Name | Text |
-| Supplier_Type | Text |
-| Business_Type | Text |
-| Country | Text |
-| City | Text |
-| Website | Text |
-| Contact_Email | Text |
-| Contact_Phone | Text |
-| Verified_Supplier | Yes/No |
-| Official_Authorized_Distributor | Yes/No |
-| Supplier_Status | Text |
-| Created_Date | DateTime |
-| Updated_Date | DateTime |
-
-### Primary Key
-
-Supplier_ID
-
-### Notes
-
-Suppliers can provide products and receive RFQ requests.
-
----
-
-# 2. Product Catalog
-
-The product catalog stores electronic products, their specifications, images, documents, delivery options, alternative products and services.
-
----
-
-## Table: Products
-
-This is the main product table.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Product_ID | UUID |
-| Product_Type | Text |
-| Product_Name | Text |
-| Category | Text |
-| Subcategory | Text |
-| Brand_Manufacturer | Text |
-| Model_Series | Text |
-| Part_Number_MPN | Text |
-| SKU_Internal | Text |
-| GTIN_EAN | Text |
-| Country_Of_Origin | Text |
-| Short_Description | Long Text |
-| Full_Description | Long Text |
-| Supplier_Type | Text |
-| Business_Type | Text |
-| Number_Of_Suppliers | Number |
-| Number_Of_Manufacturers | Number |
-| Verified_Suppliers | Yes/No |
-| Official_Authorized_Distributor | Yes/No |
-| Availability | Text |
-| Stock_Location | Text |
-| MOQ_Quantity | Number |
-| MOQ_Unit | Text |
-| Price_Type | Text |
-| Base_Price | Number |
-| Base_Currency | Text |
-| Min_Price | Number |
-| Max_Price | Number |
-| Price_Range_Currency | Text |
-| Price_On_Request | Yes/No |
-| Lead_Time | Text |
-| Delivery_Time_Estimated | Text |
-| Shipping_Methods | Text |
-| Delivery_Countries | Text |
-| Packaging_Details | Long Text |
-| HS_Code | Text |
-| Installation_Available | Yes/No |
-| Training_Available | Yes/No |
-| Maintenance_Available | Yes/No |
-| Technical_Support | Yes/No |
-| Spare_Parts_Available | Yes/No |
-| Customization_Available | Yes/No |
-| Service_Description | Long Text |
-| Meta_Title | Text |
-| Meta_Description | Long Text |
-| Visibility | Text |
-| Warranty | Text |
-| Return_Policy | Text |
-| Condition | Text |
-| Notes | Long Text |
-| Product_Status | Text |
-| Main_Image_URL | Text |
-| Created_Date | DateTime |
-| Updated_Date | DateTime |
-| Supplier_ID | Link |
-| Created_By_User_ID | Link |
-
-### Primary Key
+1.TABLE: Products
 
 Product_ID
+Product_Type
+Product_Name
+Category
+Subcatego2ry
+Brand_Manufacturer
+Model_Series
+Part_Number_MPN
+SKU_Internal
+GTIN_EAN
+Country_Of_Origin
+Short_Description
+Full_Description
+Supplier_Type
+Business_Type
+Number_Of_Suppliers
+Number_Of_Manufacturers
+Verified_Suppliers
+Official_Authorized_Distributor
+Availability
+Stock_Location
+MOQ_Quantity
+MOQ_Unit
+Price_Type
+Base_Price
+Base_Currency
+Min_Price
+Max_Price
+Price_Range_Currency
+Price_On_Request
+Lead_Time
+Delivery_Time_Estimated
+Shipping_Methods
+Delivery_Countries
+Packaging_Details
+HS_Code
+Installation_Available
+Training_Available
+Maintenance_Available
+Technical_Support
+Spare_Parts_Available
+Customization_Available
+Service_Description
+Meta_Title
+Meta_Description
+Visibility
+Warranty
+Return_Policy
+Condition
+Notes
+Product_Status
+Main_Image_URL
+Created_Date
+Updated_Date
+Supplier_ID
+Manufacturer_ID
+Created_By_User_ID
 
-### Foreign Keys
 
-| Field | References |
-|---|---|
-| Supplier_ID | Suppliers.Supplier_ID |
-| Created_By_User_ID | Users.User_ID |
-
-### Notes
-
-This table was previously described as "MAIN PAGE", but in the database it must be named `Products`.
-
----
-
-## Table: ProductSpecifications
-
-Stores product technical specifications.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Specification_ID | UUID |
-| Product_ID | Link |
-| Specification_Name | Text |
-| Specification_Value | Text |
-| Unit | Text |
-
-### Primary Key
+2.TABLE: ProductSpecifications
 
 Specification_ID
+Product_ID
+Specification_Name
+Specification_Value
+Unit
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| Product_ID | Products.Product_ID |
-
----
-
-## Table: ProductImages
-
-Stores product images.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Image_ID | UUID |
-| Product_ID | Link |
-| Image_URL | Text |
-| Image_Title | Text |
-| Is_Main_Image | Yes/No |
-| Sort_Order | Number |
-
-### Primary Key
+3.TABLE: ProductImages
 
 Image_ID
+Product_ID
+Image_URL
+Image_Title
+Is_Main_Image
+Sort_Order
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| Product_ID | Products.Product_ID |
-
----
-
-## Table: ProductDocuments
-
-Stores product documents, certificates, datasheets and manuals.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Document_ID | UUID |
-| Product_ID | Link |
-| Document_Type | Text |
-| Document_Name | Text |
-| File_URL | Text |
-
-### Primary Key
+4.TABLE: ProductDocuments
 
 Document_ID
+Product_ID
+Document_Type
+Document_Name
+File_URL
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| Product_ID | Products.Product_ID |
-
----
-
-## Table: ProductShippingMethods
-
-Stores shipping methods available for each product.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Shipping_Method_ID | UUID |
-| Product_ID | Link |
-| Shipping_Method | Text |
-
-### Primary Key
+5.TABLE: ProductShippingMethods
 
 Shipping_Method_ID
+Product_ID
+Shipping_Method
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| Product_ID | Products.Product_ID |
-
----
-
-## Table: ProductDeliveryCountries
-
-Stores countries where a product can be delivered.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Country_ID | UUID |
-| Product_ID | Link |
-| Country_Name | Text |
-
-### Primary Key
+6.TABLE: ProductDeliveryCountries
 
 Country_ID
+Product_ID
+Country_Name
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| Product_ID | Products.Product_ID |
-
----
-
-## Table: AlternativeProducts
-
-Stores alternative or substitute products.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Alternative_ID | UUID |
-| Product_ID | Link |
-| Alternative_Part_Number | Text |
-| Alternative_Product_Name | Text |
-| Alternative_Manufacturer_Brand | Text |
-
-### Primary Key
+7.TABLE: AlternativeProducts
 
 Alternative_ID
+Product_ID
+Alternative_Part_Number
+Alternative_Product_Name
+Alternative_Manufacturer_Brand
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| Product_ID | Products.Product_ID |
-
----
-
-## Table: ProductServices
-
-Stores service options connected with a product.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Service_ID | UUID |
-| Product_ID | Link |
-| Installation_Available | Yes/No |
-| Training_Available | Yes/No |
-| Maintenance_Available | Yes/No |
-| Technical_Support | Yes/No |
-| Spare_Parts_Available | Yes/No |
-| Customization_Available | Yes/No |
-| Service_Description | Long Text |
-
-### Primary Key
+8.TABLE: ProductServices
 
 Service_ID
+Product_ID
+Installation_Available
+Training_Available
+Maintenance_Available
+Technical_Support
+Spare_Parts_Available
+Customization_Available
+Service_Description
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| Product_ID | Products.Product_ID |
+9.TABLE: Suppliers
 
----
+Supplier_ID
+Supplier_Name
+Supplier_Type
+Business_Type
+Country
+City
+Address
+Website
+Email
+Phone
+Contact_Person
+Verified_Supplier
+Official_Authorized_Distributor
+Supplier_Status
+Company_Description
+Logo_URL
+Created_Date
+Updated_Date
 
-# 3. Product Catalog Relationships
 
-## Product Relationship Diagram
+10.TABLE: Manufacturers
 
-Products
-|
-|-- ProductSpecifications
-|      Product_ID references Products.Product_ID
-|
-|-- ProductImages
-|      Product_ID references Products.Product_ID
-|
-|-- ProductDocuments
-|      Product_ID references Products.Product_ID
-|
-|-- ProductShippingMethods
-|      Product_ID references Products.Product_ID
-|
-|-- ProductDeliveryCountries
-|      Product_ID references Products.Product_ID
-|
-|-- AlternativeProducts
-|      Product_ID references Products.Product_ID
-|
-|-- ProductServices
-|      Product_ID references Products.Product_ID
+Manufacturer_ID
+Manufacturer_Name
+Country
+Website
+Email
+Phone
+Company_Description
+Logo_URL
+Manufacturer_Status
+Created_Date
+Updated_Date
 
-## Explicit Product Relationships
 
-| Parent Table | Parent Field | Child Table | Child Field | Relationship Type |
-|---|---|---|---|---|
-| Suppliers | Supplier_ID | Products | Supplier_ID | One-to-Many |
-| Users | User_ID | Products | Created_By_User_ID | One-to-Many |
-| Products | Product_ID | ProductSpecifications | Product_ID | One-to-Many |
-| Products | Product_ID | ProductImages | Product_ID | One-to-Many |
-| Products | Product_ID | ProductDocuments | Product_ID | One-to-Many |
-| Products | Product_ID | ProductShippingMethods | Product_ID | One-to-Many |
-| Products | Product_ID | ProductDeliveryCountries | Product_ID | One-to-Many |
-| Products | Product_ID | AlternativeProducts | Product_ID | One-to-Many |
-| Products | Product_ID | ProductServices | Product_ID | One-to-One or One-to-Many |
-
----
-
-# 4. RFQ System
-
-The RFQ system allows buyers to create requests for quotation, add requested items, upload BOM files, send RFQs to selected suppliers, receive supplier quotes and communicate with suppliers.
-
----
-
-## Table: RFQ
-
-Main RFQ table.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| RFQ_ID | UUID |
-| RFQ_Name | Text |
-| RFQ_Type | Text |
-| RFQ_Visibility | Text |
-| Project_Description | Long Text |
-| Required_Delivery_Date | DateTime |
-| Incoterms_Preference | Text |
-| Destination_Country | Text |
-| Target_Budget | Number |
-| Official_Suppliers_Only | Yes/No |
-| Manufacturers_Only | Yes/No |
-| Include_Substitute_Alternate_Parts | Yes/No |
-| Need_Technical_Support | Yes/No |
-| RFQ_Status | Text |
-| Created_By_User_ID | Link |
-| Created_Date | DateTime |
-| Updated_Date | DateTime |
-
-### Primary Key
+11.TABLE: RFQ
 
 RFQ_ID
+RFQ_Name
+RFQ_Type
+RFQ_Visibility
+Project_Description
+Required_Delivery_Date
+Incoterms_Preference
+Destination_Country
+Target_Budget
+Official_Suppliers_Only
+Manufacturers_Only
+Include_Substitute_Alternate_Parts
+Need_Technical_Support
+RFQ_Status
+Created_By_User_ID
+Created_Date
+Updated_Date
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| Created_By_User_ID | Users.User_ID |
-
-### Status Values
-
-- draft
-- sent
-- supplier_review
-- quoted
-- closed
-- cancelled
-
----
-
-## Table: RFQ_Items
-
-Stores products/items requested inside an RFQ.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| RFQ_Item_ID | UUID |
-| RFQ_ID | Link |
-| Rec_Num | Number |
-| Part_Num | Text |
-| Name_Of_Detail | Text |
-| Specification | Long Text |
-| Amount | Number |
-| Additional_Info | Long Text |
-
-### Primary Key
+12.TABLE: RFQ_Items
 
 RFQ_Item_ID
+RFQ_ID
+Rec_Num
+Part_Num
+Name_Of_Detail
+Specification
+Amount
+Additional_Info
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| RFQ_ID | RFQ.RFQ_ID |
-
-### Notes
-
-One RFQ can contain many RFQ items.
-
----
-
-## Table: RFQ_BOM_Files
-
-Stores uploaded BOM files.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| BOM_File_ID | UUID |
-| RFQ_ID | Link |
-| BOM_File_URL | Text |
-| BOM_File_Name | Text |
-| BOM_File_Type | Text |
-| BOM_File_Size | Number |
-| Uploaded_Date | DateTime |
-| AI_Analysis_Status | Text |
-| AI_Matched_Suppliers_Count | Number |
-
-### Primary Key
+13.TABLE: RFQ_BOM_Files
 
 BOM_File_ID
+RFQ_ID
+BOM_File_URL
+BOM_File_Name
+BOM_File_Type
+BOM_File_Size
+Uploaded_Date
+AI_Analysis_Status
+AI_Matched_Suppliers_Count
 
-### Foreign Key
 
-| Field | References |
-|---|---|
-| RFQ_ID | RFQ.RFQ_ID |
-
-### Notes
-
-This table is prepared for future AI BOM analysis.
-
----
-
-## Table: RFQ_Target_Suppliers
-
-Stores suppliers selected for a specific RFQ.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| RFQ_Target_Supplier_ID | UUID |
-| RFQ_ID | Link |
-| Supplier_ID | Link |
-| Send_Status | Text |
-| Sent_Date | DateTime |
-| Viewed_Date | DateTime |
-| Quote_Status | Text |
-
-### Primary Key
+14.TABLE: RFQ_Target_Suppliers
 
 RFQ_Target_Supplier_ID
+RFQ_ID
+Supplier_ID
+Send_Status
+Sent_Date
+Viewed_Date
+Quote_Status
 
-### Foreign Keys
 
-| Field | References |
-|---|---|
-| RFQ_ID | RFQ.RFQ_ID |
-| Supplier_ID | Suppliers.Supplier_ID |
-
-### Send Status Values
-
-- draft
-- sent
-- viewed
-- failed
-
-### Quote Status Values
-
-- waiting
-- quoted
-- declined
-- expired
-
-### Notes
-
-This table is required because one RFQ can be sent to many suppliers.
-
-One supplier can receive many RFQs.
-
----
-
-## Table: RFQ_Quotes
-
-Stores commercial quotations from suppliers.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Quote_ID | UUID |
-| RFQ_ID | Link |
-| RFQ_Target_Supplier_ID | Link |
-| Supplier_ID | Link |
-| Quote_Status | Text |
-| Total_Amount | Number |
-| Currency | Text |
-| Delivery_Time | Text |
-| Incoterms | Text |
-| Supplier_Comment | Long Text |
-| Created_Date | DateTime |
-
-### Primary Key
+15.TABLE: RFQ_Quotes
 
 Quote_ID
+RFQ_ID
+RFQ_Target_Supplier_ID
+Supplier_ID
+Quote_Status
+Total_Amount
+Currency
+Delivery_Time
+Incoterms
+Supplier_Comment
+Created_Date
 
-### Foreign Keys
 
-| Field | References |
-|---|---|
-| RFQ_ID | RFQ.RFQ_ID |
-| RFQ_Target_Supplier_ID | RFQ_Target_Suppliers.RFQ_Target_Supplier_ID |
-| Supplier_ID | Suppliers.Supplier_ID |
-
-### Quote Status Values
-
-- draft
-- submitted
-- revised
-- accepted
-- rejected
-- expired
-
-### Notes
-
-One supplier can submit a quote for an RFQ.
-
-A quote can contain many quoted items.
-
----
-
-## Table: RFQ_Quote_Items
-
-Stores item-level details of supplier quotations.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Quote_Item_ID | UUID |
-| Quote_ID | Link |
-| RFQ_Item_ID | Link |
-| Offered_Part_Num | Text |
-| Offered_Name_Of_Detail | Text |
-| Offered_Specification | Long Text |
-| Offered_Amount | Number |
-| Unit_Price | Number |
-| Total_Price | Number |
-| Currency | Text |
-| Is_Substitute_Alternate | Yes/No |
-| Delivery_Time | Text |
-| Comment | Long Text |
-
-### Primary Key
+16.TABLE: RFQ_Quote_Items
 
 Quote_Item_ID
+Quote_ID
+RFQ_Item_ID
+Offered_Part_Num
+Offered_Name_Of_Detail
+Offered_Specification
+Offered_Amount
+Unit_Price
+Total_Price
+Currency
+Is_Substitute_Alternate
+Delivery_Time
+Comment
 
-### Foreign Keys
 
-| Field | References |
-|---|---|
-| Quote_ID | RFQ_Quotes.Quote_ID |
-| RFQ_Item_ID | RFQ_Items.RFQ_Item_ID |
-
-### Notes
-
-This table connects what the buyer requested with what the supplier offered.
-
-Important relationship:
-
-RFQ_Items.RFQ_Item_ID → RFQ_Quote_Items.RFQ_Item_ID
-
-RFQ_Quotes.Quote_ID → RFQ_Quote_Items.Quote_ID
-
-This allows comparison between the buyer's requested item and the supplier's offered item.
-
----
-
-## Table: RFQ_Messages
-
-Stores messages between buyers and suppliers related to RFQ.
-
-### Fields
-
-| Field Name | Type |
-|---|---|
-| Message_ID | UUID |
-| RFQ_ID | Link |
-| Supplier_ID | Link |
-| Sender_User_ID | Link |
-| Receiver_User_ID | Link |
-| Message_Subject | Text |
-| Message_Text | Long Text |
-| Message_Status | Text |
-| Sent_Date | DateTime |
-| Read_Date | DateTime |
-
-### Primary Key
+17. TABLE: RFQ_Messages
 
 Message_ID
+RFQ_ID
+Supplier_ID
+Sender_User_ID
+Receiver_User_ID
+Message_Subject
+Message_Text
+Message_Status
+Sent_Date
+Read_Date
 
-### Foreign Keys
 
-| Field | References |
-|---|---|
-| RFQ_ID | RFQ.RFQ_ID |
-| Supplier_ID | Suppliers.Supplier_ID |
-| Sender_User_ID | Users.User_ID |
-| Receiver_User_ID | Users.User_ID |
+18.TABLE: Pages
 
-### Message Status Values
+Page_ID
+Page_Name
+Page_Title
+Page_URL
+Page_Type
+Meta_Title
+Meta_Description
+Sort_Order
+Is_Active
 
-- sent
-- delivered
-- read
-- archived
 
----
 
-# 5. RFQ Relationships
+19. TABLE:Homepage_Content
+1_contry 
+1_language
+1_name
+1_ description 
+1_Title_of_site
+1_Subtitle_of_site
+1_Link_to_getBOM
+1_Link_to_Supplier
+1_underTitle1
+1_underTitle2
+1_underTitle3
+1_underTitle4
+1_Menu1
+1_Menu1_link
+1_Menu2
+1_Menu2_link
+1_Menu3
+1_Menu3_link
+1_Menu4
+1_Menu4_link
+2_title1  
+2_title2
+2_pic1
+2_name1
+2_text1
+2_pic2
+2_name2
+2_text2
+2_pic3
+2_name3
+2_text3
+2_pic4
+2_name4
+2_text4
+2_link_button 
 
-## RFQ Relationship Diagram
+3_title
+3_description
+4_title
+4_description
+5_title
+5_description
+5_name1
+5_text1
+5_pic1
+5_name2
+5_text2
+5_pic2
+5_name3
+5_text3
+5_pic3
+5_name4
+5_text4
+5_pic4
+5_name5
+5_text5
+5_pic5
+5_name6
+5_text6
+5_pic6
+6_title
+6_description
+6_title1
+6_text1
+6_pic1
+6_title2
+6_text2
+6_pic2
+6_title3
+6_text3
+6_pic3
+6_title4
+6_text4
+6_pic4
+6_simple1
+6_simple2
+6_simple3
+6_simple4
+7_title
+7_description
+7_title1
+7_text1
+7_pic1
+7_title2
+7_text2
+7_pic2
+7_title3
+7_text3
+7_pic3
+7_title4
+7_text4
+7_pic4
+7_title5
+7_text5
+7_pic5
+8 _title
+8_description
+8_title1
+8_text1
+8_pic1
+8_title2
+8_text2
+8_pic2
+8_title3
+8_text3
+8_pic3
+8_title4
+8_text4
+8_pic4
+8_title5
+8_text5
+8_pic5
+8_title6
+8_text6
+8_pic6
+9_titel
+9_description
+10_title
+10_description
+11_Title
+11_Description
+11_pic1
+11_digit1
+11_text1
+11_pic2
+11_digit2
+11_text2
+11_pic3
+11_digit3
+11_text3
+11_pic4
+11_digit4
+11_text4
+11_pic5
+11_digit5
+11_text5
+11_pic6
+11_digit6
+11_text6
 
-RFQ
-|
-|-- RFQ_Items
-|      RFQ_ID references RFQ.RFQ_ID
-|
-|-- RFQ_BOM_Files
-|      RFQ_ID references RFQ.RFQ_ID
-|
-|-- RFQ_Target_Suppliers
-|      RFQ_ID references RFQ.RFQ_ID
-|      Supplier_ID references Suppliers.Supplier_ID
-|
-|-- RFQ_Quotes
-|      RFQ_ID references RFQ.RFQ_ID
-|      RFQ_Target_Supplier_ID references RFQ_Target_Suppliers.RFQ_Target_Supplier_ID
-|      Supplier_ID references Suppliers.Supplier_ID
-|
-|-- RFQ_Quote_Items
-|      Quote_ID references RFQ_Quotes.Quote_ID
-|      RFQ_Item_ID references RFQ_Items.RFQ_Item_ID
-|
-|-- RFQ_Messages
-       RFQ_ID references RFQ.RFQ_ID
-       Supplier_ID references Suppliers.Supplier_ID
-       Sender_User_ID references Users.User_ID
-       Receiver_User_ID references Users.User_ID
+12_title 
+12_deviz
+12_logo
+12_pic_card1
+12_pic_card1_link
+12_pic_card2
+12_pic_card2_link
+12_pic_card3
+12_pic_card3_link
+12_pic_card4
+12_pic_card4_link
+12_pic_card5
+12_pic_card5_link
+12_pic_card6
+12_pic_card6_link
+12_how_it_work
+12_how_it_work_link
+12_submit_RFQ
+12_submit_RFQ_link
+12_Find_supplier
+12_Find_supplier_link
+12_Help_center
+12_Help_center_link
+12_Join_as_supplier
+12_Join_as_supplier_link
+12_Supplier_guide
+12_Supplier_guide_link
+12_Benefit
+12_Benefit_link
+12_Resources
+12_Resources_link
+12_About_us
+12_About_us_link
+12_News
+12_News_link
+12_careers
+12_careers_link
+12_Partners
+12_Partners_link
+12_Contact_us
+12_Contact_us_link
 
-## Explicit RFQ Relationships
 
-| Parent Table | Parent Field | Child Table | Child Field | Relationship Type |
-|---|---|---|---|---|
-| Users | User_ID | RFQ | Created_By_User_ID | One-to-Many |
-| RFQ | RFQ_ID | RFQ_Items | RFQ_ID | One-to-Many |
-| RFQ | RFQ_ID | RFQ_BOM_Files | RFQ_ID | One-to-Many |
-| RFQ | RFQ_ID | RFQ_Target_Suppliers | RFQ_ID | One-to-Many |
-| Suppliers | Supplier_ID | RFQ_Target_Suppliers | Supplier_ID | One-to-Many |
-| RFQ | RFQ_ID | RFQ_Quotes | RFQ_ID | One-to-Many |
-| RFQ_Target_Suppliers | RFQ_Target_Supplier_ID | RFQ_Quotes | RFQ_Target_Supplier_ID | One-to-One or One-to-Many |
-| Suppliers | Supplier_ID | RFQ_Quotes | Supplier_ID | One-to-Many |
-| RFQ_Quotes | Quote_ID | RFQ_Quote_Items | Quote_ID | One-to-Many |
-| RFQ_Items | RFQ_Item_ID | RFQ_Quote_Items | RFQ_Item_ID | One-to-Many |
-| RFQ | RFQ_ID | RFQ_Messages | RFQ_ID | One-to-Many |
-| Suppliers | Supplier_ID | RFQ_Messages | Supplier_ID | One-to-Many |
-| Users | User_ID | RFQ_Messages | Sender_User_ID | One-to-Many |
-| Users | User_ID | RFQ_Messages | Receiver_User_ID | One-to-Many |
 
----
+20.TABLE: Category 
+Cat_ID
+Pic 
+Name
+Text
+Description 
+Type_of_product
 
-# 6. Implementation Rules for Codex
+21-3.TABLE:Verified_supplier
+	Supplier_ID
+	Name
+	Pic 
+	Delivery_product 
+ 
+22-9. TABLE: Industry_solution 
+	Ind_ID
+Title
+	Text
+	Pic
 
-## Database Naming
-
-When implementing in Supabase/PostgreSQL, Codex may convert names to lowercase snake_case.
-
-Examples:
-
-| Documentation Name | Database Name |
-|---|---|
-| Users | users |
-| Suppliers | suppliers |
-| Products | products |
-| ProductSpecifications | product_specifications |
-| ProductImages | product_images |
-| ProductDocuments | product_documents |
-| ProductShippingMethods | product_shipping_methods |
-| ProductDeliveryCountries | product_delivery_countries |
-| AlternativeProducts | alternative_products |
-| ProductServices | product_services |
-| RFQ | rfq |
-| RFQ_Items | rfq_items |
-| RFQ_BOM_Files | rfq_bom_files |
-| RFQ_Target_Suppliers | rfq_target_suppliers |
-| RFQ_Quotes | rfq_quotes |
-| RFQ_Quote_Items | rfq_quote_items |
-| RFQ_Messages | rfq_messages |
-
-## Field Naming
-
-Codex may convert field names to lowercase snake_case.
-
-Examples:
-
-| Documentation Field | Database Field |
-|---|---|
-| User_ID | user_id |
-| Supplier_ID | supplier_id |
-| Product_ID | product_id |
-| RFQ_ID | rfq_id |
-| RFQ_Item_ID | rfq_item_id |
-| Quote_ID | quote_id |
-| Created_Date | created_date |
-| Updated_Date | updated_date |
-
-## ID Rule
-
-All primary keys should use UUID.
-
-## Date Rule
-
-All date and datetime fields should use timestamp or date-time types.
-
-## Foreign Key Rule
-
-All relationships described in this document should be implemented as foreign keys.
-
-Examples:
-
-- rfq_items.rfq_id references rfq.rfq_id
-- rfq_bom_files.rfq_id references rfq.rfq_id
-- rfq_target_suppliers.rfq_id references rfq.rfq_id
-- rfq_target_suppliers.supplier_id references suppliers.supplier_id
-- rfq_quotes.rfq_id references rfq.rfq_id
-- rfq_quotes.rfq_target_supplier_id references rfq_target_suppliers.rfq_target_supplier_id
-- rfq_quotes.supplier_id references suppliers.supplier_id
-- rfq_quote_items.quote_id references rfq_quotes.quote_id
-- rfq_quote_items.rfq_item_id references rfq_items.rfq_item_id
-- rfq_messages.rfq_id references rfq.rfq_id
-- rfq_messages.supplier_id references suppliers.supplier_id
-- rfq_messages.sender_user_id references users.user_id
-- rfq_messages.receiver_user_id references users.user_id
-
----
-
-# 7. Development Priority
-
-## First Stage
-
-The first working version should focus on the RFQ module.
-
-Recommended first-stage tables:
-
-- users
-- suppliers
-- rfq
-- rfq_items
-- rfq_bom_files
-- rfq_target_suppliers
-- rfq_quotes
-- rfq_quote_items
-- rfq_messages
-
-The product catalog structure is included for planning, but it does not need to be fully implemented in the first stage unless explicitly requested.
-
-## Second Stage
-
-After the RFQ module works, implement the product catalog:
-
-- products
-- product_specifications
-- product_images
-- product_documents
-- product_shipping_methods
-- product_delivery_countries
-- alternative_products
-- product_services
-
-## Future Modules
-
-Future modules may include:
-
-- buyer dashboard
-- supplier dashboard
-- admin dashboard
-- product catalog search
-- supplier catalog
-- order management
-- file uploads
-- notifications
-- email automation
-- AI assistant
-- AI BOM analysis
-- AI product matching
-- payment integration
+23-10. TABLE: Customer_say
+	Ref_ID
+Title
+Text
+Pic
+24. TABLE: Type_product
+	Type_ID
+Title
+Text
+Pic
+Description 
