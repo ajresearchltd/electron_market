@@ -59,22 +59,22 @@ export default function IndustrySolutionsSection() {
   }, []);
 
   return (
-    <section className="bg-slate-50 py-16 md:py-20">
-      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Industry Solutions</h2>
-          <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
+    <section className="bg-white py-8 md:py-10">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
+        <div className="mb-5">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">Industry Solutions</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Specialized sourcing support for component-heavy industries.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           {solutions.map((solution) => {
             const Icon = solution.icon ?? Factory;
             const pic = solution.pic?.trim();
             return (
-              <article key={solution.ind_id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md">
-                <div className="flex h-[250px] w-full items-center justify-center overflow-hidden bg-blue-50 text-blue-600">
+              <article key={solution.ind_id} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md">
+                <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-blue-50 text-blue-600">
                   {pic ? (
                     isImagePath(pic) ? (
                       <img src={pic} alt="" className="h-full w-full object-cover" />
@@ -82,12 +82,12 @@ export default function IndustrySolutionsSection() {
                       <span className="text-sm font-bold text-blue-700">{pic}</span>
                     )
                   ) : (
-                    <Icon size={34} aria-hidden="true" />
+                    <Icon size={28} aria-hidden="true" />
                   )}
                 </div>
-                <div className="p-3">
-                  <h3 className="text-base font-semibold text-slate-950">{solution.title || 'Industry Solution'}</h3>
-                  {solution.text && <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-600">{solution.text}</p>}
+                <div className="p-2.5 text-center">
+                  <h3 className="text-xs font-semibold leading-4 text-slate-950">{solution.title || 'Industry Solution'}</h3>
+                  {solution.text && <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-600">{solution.text}</p>}
                 </div>
               </article>
             );

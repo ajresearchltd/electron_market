@@ -30,15 +30,18 @@ export default function BottomCTASection() {
   }, []);
 
   return (
-    <section className="bg-blue-600 py-16 text-white md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 text-center sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-3xl rounded-2xl border border-white/15 bg-white/10 px-6 py-10 shadow-xl shadow-blue-900/20 md:px-10">
-          <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">{title}</h2>
-          <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-blue-100">{description}</p>
-          <Link href={buttonHref} className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-7 text-base font-bold text-blue-700 shadow-lg shadow-blue-950/20 hover:bg-blue-50">
+    <section className="bg-white py-8 text-white md:py-10">
+      <div className="mx-auto max-w-[1180px] px-4 text-center sm:px-6 lg:px-8">
+        <div className="relative overflow-hidden rounded-2xl border border-white/15 bg-[#061b3d] px-6 py-8 shadow-xl shadow-blue-900/20 md:px-10">
+          <img src="/reference/friz_1.jpg" alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
+          <div className="relative z-10">
+          <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">{title}</h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-blue-100">{description}</p>
+          <Link href={buttonHref} className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#2f80ff] px-5 text-sm font-bold text-white shadow-lg shadow-blue-950/20 hover:bg-[#4d95ff]">
             {buttonLabel}
             <ArrowRight size={20} aria-hidden="true" />
           </Link>
+          </div>
         </div>
       </div>
     </section>

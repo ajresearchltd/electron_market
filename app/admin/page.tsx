@@ -68,6 +68,7 @@ type SupplierProfileRow = {
   bank_name: string | null;
   iban: string | null;
   verification_status: string | null;
+  created_at: string | null;
   updated_at: string | null;
 };
 
@@ -140,6 +141,8 @@ type CustomerCompanyProfileRow = {
   company_address: string | null;
   customer_notes: string | null;
   customer_status: string | null;
+  created_at: string | null;
+  updated_at?: string | null;
 };
 
 type RfqItemFormRow = {
@@ -1194,7 +1197,8 @@ export default function AdminControlCenterPage() {
   const [items, setItems] = useState<RfqItemRow[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRow[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierProfileRow[]>([]);
-  const [customers, setCustomers] = useState<UserProfileRow[]>([]);
+  const [customers, setCustomers] = useState<CustomerCompanyProfileRow[]>([]);
+  const [customerAccounts, setCustomerAccounts] = useState<UserProfileRow[]>([]);
   const [supplierAccounts, setSupplierAccounts] = useState<UserProfileRow[]>([]);
   const [customerProfiles, setCustomerProfiles] = useState<CustomerCompanyProfileRow[]>([]);
   const [customerProfileLoadError, setCustomerProfileLoadError] = useState('');
@@ -1264,6 +1268,7 @@ export default function AdminControlCenterPage() {
       assignmentsResult,
       suppliersResult,
       customersResult,
+      customerAccountsResult,
       supplierAccountsResult,
       customerProfilesResult,
       countriesResult,
@@ -1275,10 +1280,11 @@ export default function AdminControlCenterPage() {
       supabase.from('rfq_orders0').select('*').order('created_at', { ascending: false }).limit(30),
       supabase.from('rfq_order_items0').select('*').order('line_number', { ascending: true }),
       supabase.from(ASSIGNMENTS_TABLE).select('*').order('assigned_at', { ascending: false }),
-      supabase.from('supplier_company_profiles').select('*').order('updated_at', { ascending: false }).limit(30),
-      supabase.from('user_profiles').select('id, email, role, full_name, company_name, created_at').eq('role', 'customer').order('created_at', { ascending: false }).limit(30),
+      supabase.from('supplier_company_profiles').select('*').order('created_at', { ascending: false }).limit(30),
+      supabase.from('customer_company_profiles').select('customer_profile_id, user_id, company_name, business_registration_number, country_iso2, country_name, contact_name, contact_email, contact_phone, website, company_address, customer_notes, customer_status, created_at, updated_at').order('created_at', { ascending: false }).limit(30),
+      supabase.from('user_profiles').select('id, email, role, full_name, company_name, created_at').eq('role', 'customer').order('created_at', { ascending: false }).limit(100),
       supabase.from('user_profiles').select('id, email, role, full_name, company_name, created_at').eq('role', 'supplier').order('created_at', { ascending: false }).limit(100),
-      supabase.from('customer_company_profiles').select('customer_profile_id, user_id, company_name, business_registration_number, country_iso2, country_name, contact_name, contact_email, contact_phone, website, company_address, customer_notes, customer_status').eq('customer_status', 'active').order('company_name', { ascending: true }).limit(100),
+      supabase.from('customer_company_profiles').select('customer_profile_id, user_id, company_name, business_registration_number, country_iso2, country_name, contact_name, contact_email, contact_phone, website, company_address, customer_notes, customer_status, created_at, updated_at').eq('customer_status', 'active').order('company_name', { ascending: true }).limit(100),
       supabase.from('countries').select('country_id, iso2, iso3, name').eq('is_active', true).order('name', { ascending: true }),
       supabase.from('active_orders').select('order_number, customer_id, customer_company_name, current_stage, order_status'),
       supabase.from('supplier_quotes0').select('quote_id, order_number, supplier_company_name, quote_status, quote_total, currency'),
@@ -1291,6 +1297,7 @@ export default function AdminControlCenterPage() {
     if (assignmentsResult.error) addError('RFQ assignments', assignmentsResult.error.message);
     if (suppliersResult.error) addError('Latest Suppliers', suppliersResult.error.message);
     if (customersResult.error) addError('Latest Customers', customersResult.error.message);
+    if (customerAccountsResult.error) addError('Customer Accounts', customerAccountsResult.error.message);
     if (supplierAccountsResult.error) addError('Supplier Accounts', supplierAccountsResult.error.message);
     if (customerProfilesResult.error) addError('Customer Company Profiles', customerProfilesResult.error.message);
     if (countriesResult.error) addError('Countries', countriesResult.error.message);
@@ -1303,7 +1310,8 @@ export default function AdminControlCenterPage() {
     setItems((itemsResult.data ?? []) as RfqItemRow[]);
     setAssignments((assignmentsResult.data ?? []) as AssignmentRow[]);
     setSuppliers((suppliersResult.data ?? []) as SupplierProfileRow[]);
-    setCustomers((customersResult.data ?? []) as UserProfileRow[]);
+    setCustomers((customersResult.data ?? []) as CustomerCompanyProfileRow[]);
+    setCustomerAccounts((customerAccountsResult.data ?? []) as UserProfileRow[]);
     setSupplierAccounts((supplierAccountsResult.data ?? []) as UserProfileRow[]);
     setCustomerProfiles((customerProfilesResult.data ?? []) as CustomerCompanyProfileRow[]);
     setCustomerProfileLoadError(customerProfilesResult.error?.message || '');
@@ -1683,15 +1691,19 @@ export default function AdminControlCenterPage() {
                   {suppliers.length === 0 ? (
                     <tr><td colSpan={7} className={emptyCellClass}>No suppliers yet.</td></tr>
                   ) : suppliers.map((supplier) => (
-                    <tr key={supplier.profile_id} onClick={() => setSelectedSupplier(supplier)} className="cursor-pointer hover:bg-blue-50">
-                      <td className="px-4 py-3 font-semibold">{supplier.company_name || 'Unnamed supplier'}</td>
+                    <tr key={supplier.profile_id} className="hover:bg-blue-50">
+                      <td className="px-4 py-3 font-semibold">
+                        <Link href={`/admin/suppliers/${supplier.profile_id}`} className="text-blue-700 hover:text-blue-800">
+                          {supplier.company_name || 'Unnamed supplier'}
+                        </Link>
+                      </td>
                       <td className="px-4 py-3">{supplier.country_name || '-'}</td>
                       <td className="px-4 py-3">{supplier.main_contact_name || supplier.main_contact_email || '-'}</td>
                       <td className="px-4 py-3">{humanize(supplier.verification_status)}</td>
                       <td className="px-4 py-3">{supplier.product_categories_text || '-'}</td>
                       <td className="px-4 py-3">{documents.filter((doc) => doc.profile_id === supplier.profile_id).length}</td>
                       <td className="px-4 py-3">
-                        <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedSupplier(supplier); }} className="font-semibold text-blue-700 hover:text-blue-800">View/Review</button>
+                        <Link href={`/admin/suppliers/${supplier.profile_id}`} className="font-semibold text-blue-700 hover:text-blue-800">View/Review</Link>
                       </td>
                     </tr>
                   ))}
@@ -1712,21 +1724,22 @@ export default function AdminControlCenterPage() {
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {customers.length === 0 ? (
                     <tr><td colSpan={6} className={emptyCellClass}>No customers yet.</td></tr>
-                  ) : customers.map((customer) => {
-                    const profile = customerProfilesByUser.get(customer.id);
-                    return (
-                      <tr key={customer.id} onClick={() => setSelectedCustomer(customer)} className="cursor-pointer hover:bg-blue-50">
-                        <td className="px-4 py-3 font-semibold">{profile?.company_name || customer.company_name || '-'}</td>
-                        <td className="px-4 py-3">{profile?.country_name || '-'}</td>
-                        <td className="px-4 py-3">{profile?.contact_name || customer.full_name || customer.email || '-'}</td>
-                        <td className="px-4 py-3">{rfqs.filter((rfq) => rfq.customer_id === customer.id).length}</td>
-                        <td className="px-4 py-3">{humanize(profile?.customer_status || customer.role)}</td>
+                  ) : customers.map((customer) => (
+                      <tr key={customer.customer_profile_id} className="hover:bg-blue-50">
+                        <td className="px-4 py-3 font-semibold">
+                          <Link href={`/admin/customers/${customer.user_id}`} className="text-blue-700 hover:text-blue-800">
+                            {customer.company_name || 'Unnamed customer'}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3">{customer.country_name || '-'}</td>
+                        <td className="px-4 py-3">{customer.contact_name || customer.contact_email || '-'}</td>
+                        <td className="px-4 py-3">{rfqs.filter((rfq) => rfq.customer_id === customer.user_id).length}</td>
+                        <td className="px-4 py-3">{humanize(customer.customer_status)}</td>
                         <td className="px-4 py-3">
-                          <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedCustomer(customer); }} className="font-semibold text-blue-700 hover:text-blue-800">View</button>
+                          <Link href={`/admin/customers/${customer.user_id}`} className="font-semibold text-blue-700 hover:text-blue-800">View</Link>
                         </td>
                       </tr>
-                    );
-                  })}
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -1749,9 +1762,18 @@ export default function AdminControlCenterPage() {
             ) : <p className="text-sm text-slate-600">No recent activity yet.</p>}
           </SectionCard>
           <SectionCard title="Quick Actions">
-            <div className="flex flex-wrap gap-2">
-              {['Review Suppliers', 'Open RFQs', 'View Customers', 'Documents'].map((label) => (
-                <button key={label} type="button" className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">{label}</button>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {[
+                { label: 'Main Table', href: '/admin/homepage-content' },
+                { label: 'How It Works', href: '/admin/how-it-works' },
+                { label: 'Categories', href: '/admin/categories' },
+                { label: 'Discount Prices', href: '/admin/discount-prices' },
+                { label: 'Verified Suppliers', href: '/admin/verified-suppliers' },
+                { label: 'Industry Solutions', href: '/admin/industry-solutions' },
+              ].map((action) => (
+                <Link key={action.href} href={action.href} className="rounded-lg bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                  {action.label}
+                </Link>
               ))}
             </div>
           </SectionCard>
@@ -1767,7 +1789,7 @@ export default function AdminControlCenterPage() {
         <CreateRfqModal
           countries={countries}
           customerProfiles={customerProfiles}
-          customerAccounts={customers}
+          customerAccounts={customerAccounts}
           customerProfileLoadError={customerProfileLoadError}
           supabase={supabase}
           onClose={() => setShowCreateRfq(false)}

@@ -43,13 +43,13 @@ export default function SuppliersNetworkSection() {
   }, []);
 
   return (
-    <section className="bg-gradient-to-br from-blue-700 via-blue-800 to-slate-900 py-16 text-white md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="grid items-center gap-10 lg:grid-cols-[1.08fr_0.92fr]">
+    <section className="bg-[#f3f7fd] py-8 md:py-10">
+      <div className="mx-auto max-w-[1180px] overflow-hidden rounded-2xl border border-blue-100 bg-gradient-to-br from-[#071b3a] via-blue-800 to-slate-950 px-5 py-7 text-white shadow-sm sm:px-6 lg:px-8">
+        <div className="grid items-center gap-8 lg:grid-cols-[1.08fr_0.92fr]">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-bold tracking-tight text-white md:text-4xl">{title}</h2>
-            <p className="mt-4 text-lg leading-8 text-blue-100">{description}</p>
-            <ul className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">{title}</h2>
+            <p className="mt-3 text-sm leading-6 text-blue-100">{description}</p>
+            <ul className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
               {points.map((point) => (
                 <li key={point} className="flex items-center gap-3 text-sm font-medium text-blue-50">
                   <CheckCircle size={18} className="shrink-0 text-cyan-300" aria-hidden="true" />
@@ -57,18 +57,18 @@ export default function SuppliersNetworkSection() {
                 </li>
               ))}
             </ul>
-            <Link href="/signup?type=supplier" className="mt-8 inline-flex h-12 items-center justify-center gap-2 rounded-md bg-white px-6 text-base font-bold text-blue-700 shadow-lg shadow-blue-950/20 hover:bg-blue-50">
+            <Link href="/register/supplier" className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#2f80ff] px-5 text-sm font-bold text-white shadow-lg shadow-blue-950/20 hover:bg-[#4d95ff]">
               Become a Supplier
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
           </div>
 
-          <div className="rounded-2xl border border-white/15 bg-white/10 p-6 shadow-2xl shadow-blue-950/25 backdrop-blur">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="rounded-xl border border-white/15 bg-white/10 p-4 shadow-2xl shadow-blue-950/25 backdrop-blur">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {cards.map((card, index) => {
                 const pic = card.pic?.trim();
                 return (
-                  <div key={`${card.title}-${index}`} className={index >= 2 ? 'rounded-xl bg-white p-5 text-slate-900 sm:col-span-2' : 'rounded-xl bg-white/10 p-5'}>
+                  <div key={`${card.title}-${index}`} className={index >= 2 ? 'rounded-lg bg-white p-4 text-slate-900 sm:col-span-2' : 'rounded-lg bg-white/10 p-4'}>
                     {pic && (
                       <div className="mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg bg-white/10 text-sm font-bold text-cyan-200">
                         {isImagePath(pic) ? <img src={pic} alt="" className="h-8 w-8 object-contain" /> : pic}

@@ -7,7 +7,7 @@ import { isImagePath, loadHomepageContent } from './homepageContent';
 
 const fallbackColumns = [
   { title: 'For Buyers', links: [{ label: 'How it works', href: '#how-it-works' }, { label: 'Find Suppliers', href: '#suppliers' }, { label: 'Browse Categories', href: '#categories' }, { label: 'Help Center', href: '#' }] },
-  { title: 'For Suppliers', links: [{ label: 'Join as Supplier', href: '/signup?type=supplier' }, { label: 'Supplier Guide', href: '#' }, { label: 'Benefits', href: '#' }, { label: 'Resources', href: '#' }] },
+  { title: 'For Suppliers', links: [{ label: 'Join as Supplier', href: '/register/supplier' }, { label: 'Supplier Guide', href: '#' }, { label: 'Benefits', href: '#' }, { label: 'Resources', href: '#' }] },
   { title: 'Company', links: [{ label: 'About us', href: '#about' }, { label: 'News', href: '#' }, { label: 'Careers', href: '#' }, { label: 'Contact', href: '#' }] },
 ];
 
@@ -46,7 +46,7 @@ export default function Footer() {
         {
           title: 'For Suppliers',
           links: [
-            { label: row.section_12_join_as_supplier || 'Join as Supplier', href: row.section_12_join_as_supplier_link || '/signup?type=supplier' },
+            { label: row.section_12_join_as_supplier || 'Join as Supplier', href: row.section_12_join_as_supplier_link || '/register/supplier' },
             { label: row.section_12_supplier_guide || 'Supplier Guide', href: row.section_12_supplier_guide_link || '#' },
             { label: row.section_12_benefit || 'Benefits', href: row.section_12_benefit_link || '#' },
             { label: row.section_12_resources || 'Resources', href: row.section_12_resources_link || '#' },
@@ -74,13 +74,13 @@ export default function Footer() {
   }, []);
 
   return (
-    <footer id="about" className="bg-slate-950 py-12 text-white md:py-16">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-4">
+    <footer id="about" className="bg-slate-950 py-8 text-white md:py-10">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <div className="flex items-center gap-3">
               {logo && isImagePath(logo) ? <img src={logo} alt="" className="h-10 w-10 object-contain" /> : null}
-              <h3 className="text-2xl font-bold text-blue-400">{title}</h3>
+              <h3 className="text-xl font-bold text-blue-400">{title}</h3>
             </div>
             <p className="mt-4 text-sm leading-6 text-slate-400">{description}</p>
             <div className="mt-5 space-y-3">
@@ -118,7 +118,7 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-sm text-slate-400 md:flex-row">
+        <div className="mt-8 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-sm text-slate-400 md:flex-row">
           <p>&copy; 2024 ElectroMarket. All rights reserved.</p>
           <div className="flex gap-5">
             <a href="#" className="hover:text-white">Twitter</a>

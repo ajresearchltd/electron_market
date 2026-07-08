@@ -34,6 +34,11 @@ const emptyFormData: SupplierFormData = {
   confirmPassword: '',
 };
 
+const nullableText = (value: string) => {
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
 export default function SupplierRegisterPage() {
   const supabase = useMemo(() => createClient(), []);
   const router = useRouter();
@@ -191,6 +196,27 @@ export default function SupplierRegisterPage() {
     }
 
     if (data.session && data.user) {
+      const { error: profileError } = await supabase.from('supplier_company_profiles').upsert(
+        {
+          user_id: data.user.id,
+          company_name: formData.companyName.trim(),
+          business_registration_number: formData.businessRegistrationNumber.trim(),
+          country_iso2: formData.supplyCountryIso2,
+          country_name: selectedCountry?.name ?? null,
+          company_email: nullableText(formData.email),
+          main_contact_name: formData.fullName.trim(),
+          main_contact_email: nullableText(formData.email),
+          verification_status: 'pending',
+        },
+        { onConflict: 'user_id' }
+      );
+
+      if (profileError) {
+        setError(profileError.message);
+        setLoading(false);
+        return;
+      }
+
       const role = await getCurrentUserRole(supabase, data.user.id, data.user.user_metadata?.role as string | undefined);
       if (!role) {
         setError('Account role is missing. Please contact support.');

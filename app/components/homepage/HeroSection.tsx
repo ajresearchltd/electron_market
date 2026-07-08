@@ -55,28 +55,28 @@ export default function HeroSection() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(34,211,238,0.18),transparent_28%),radial-gradient(circle_at_18%_78%,rgba(47,128,255,0.14),transparent_32%)]" />
       <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#020b1f] to-transparent" />
 
-      <div className="relative mx-auto grid min-h-[540px] max-w-[1200px] grid-cols-1 items-center gap-8 px-4 py-12 sm:px-6 md:grid-cols-[0.46fr_0.54fr] md:py-14 lg:px-8">
+      <div className="relative mx-auto grid min-h-[470px] max-w-[1180px] grid-cols-1 items-center gap-8 px-4 py-10 sm:px-6 md:grid-cols-[0.46fr_0.54fr] md:py-12 lg:px-8">
         <div className="relative z-10 max-w-xl">
-          <h1 className="text-4xl font-extrabold leading-[1.05] tracking-tight text-white drop-shadow-2xl md:text-5xl lg:text-6xl">
+          <h1 className="text-4xl font-extrabold leading-[1.02] tracking-tight text-white drop-shadow-2xl md:text-5xl lg:text-[56px]">
             {fallbackTitle ? <>Global Marketplace for <span className="text-cyan-300">Electronic Components</span> and Equipment</> : title}
           </h1>
-          <p className="mt-5 max-w-xl text-lg leading-8 text-blue-100 drop-shadow md:text-xl">{subtitle}</p>
+          <p className="mt-4 max-w-lg text-base leading-7 text-blue-100 drop-shadow md:text-lg">{subtitle}</p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Link href={getBomHref} className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-[#2f80ff] px-6 text-base font-semibold text-white shadow-lg shadow-blue-950/30 hover:bg-[#4d95ff]">
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+            <Link href={getBomHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#2f80ff] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 hover:bg-[#4d95ff]">
               Upload BOM / Get Quotes
               <ArrowRight size={18} aria-hidden="true" />
             </Link>
-            <Link href="/register/supplier" className="inline-flex h-12 items-center justify-center rounded-md border border-white/35 bg-white/[0.08] px-6 text-base font-semibold text-white hover:bg-white/[0.15]">
+            <Link href="/register/supplier" className="inline-flex h-11 items-center justify-center rounded-md border border-white/35 bg-white/[0.08] px-5 text-sm font-semibold text-white hover:bg-white/[0.15]">
               Register as supplier
             </Link>
           </div>
 
-          <div className="mt-9 grid max-w-xl grid-cols-2 gap-x-8 gap-y-5 border-t border-white/15 pt-7">
+          <div className="mt-7 grid max-w-xl grid-cols-2 gap-x-7 gap-y-4 border-t border-white/15 pt-5 sm:grid-cols-4">
             {stats.map((stat) => (
               <div key={`${stat.value}-${stat.label}`}>
-                <div className="text-3xl font-extrabold text-white md:text-4xl">{stat.value}</div>
-                <div className="mt-1 text-sm font-semibold text-blue-200">{stat.label}</div>
+                <div className="text-xl font-extrabold text-white md:text-2xl">{stat.value}</div>
+                <div className="mt-1 text-[11px] font-semibold text-blue-200">{stat.label}</div>
               </div>
             ))}
           </div>

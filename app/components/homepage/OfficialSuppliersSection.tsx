@@ -38,24 +38,24 @@ export default function OfficialSuppliersSection() {
   }, []);
 
   return (
-    <section className="bg-slate-50 py-16 md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{title}</h2>
-          <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">{description}</p>
+    <section className="bg-white py-8 md:py-10">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
+        <div className="mb-5">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
           {suppliers.map((supplier) => {
             const pic = supplier.pic?.trim();
             return (
-              <article key={supplier.name} className="flex min-h-36 items-center gap-5 rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-blue-50 text-lg font-bold text-blue-700">
-                  {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-12 w-12 object-contain" /> : pic}
+              <article key={supplier.name} className="flex min-h-[150px] flex-col rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-200 hover:shadow-md">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-blue-50 text-sm font-bold text-blue-700">
+                  {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-8 w-8 object-contain" /> : pic}
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-950">{supplier.name}</h3>
-                  <p className="mt-1 text-sm text-slate-500">{supplier.text}</p>
+                <div className="mt-3">
+                  <h3 className="text-sm font-bold text-slate-950">{supplier.name}</h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-500">{supplier.text}</p>
                 </div>
               </article>
             );

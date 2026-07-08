@@ -40,13 +40,14 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#020b1f]/88 text-white shadow-sm backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="text-xl font-bold tracking-tight text-white">
-          {brandName}
+    <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#020b1f]/95 text-white shadow-sm backdrop-blur-xl">
+      <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:px-6 lg:px-8">
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-white">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-300/40 bg-blue-600/20 text-cyan-300">E</span>
+          <span className="leading-none">{brandName}<span className="block text-[10px] font-semibold text-blue-200">Global Components Marketplace</span></span>
         </Link>
 
-        <nav className="hidden items-center gap-7 lg:flex" aria-label="Main navigation">
+        <nav className="hidden items-center gap-8 lg:flex" aria-label="Main navigation">
           {navItems.map((item) => (
             <a key={`${item.label}-${item.href}`} href={item.href} className="text-sm font-medium text-blue-100 hover:text-white">
               {item.label}
@@ -54,15 +55,15 @@ export default function Header() {
           ))}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
-          <button type="button" className="inline-flex h-9 items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-3 text-sm font-medium text-blue-50 hover:bg-white/10">
+        <div className="hidden items-center gap-2 lg:flex">
+          <button type="button" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-3 text-xs font-medium text-blue-50 hover:bg-white/10">
             {language}
             <ChevronDown size={14} aria-hidden="true" />
           </button>
-          <Link href="/login" className="inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-blue-100 hover:text-white">
+          <Link href="/login" className="inline-flex h-8 items-center rounded-md border border-white/15 px-3 text-xs font-medium text-blue-100 hover:bg-white/10 hover:text-white">
             Log in
           </Link>
-          <Link href="/register/customer" className="inline-flex h-9 items-center rounded-md bg-[#2f80ff] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#4d95ff]">
+          <Link href="/register/customer" className="inline-flex h-8 items-center rounded-md bg-[#2f80ff] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#4d95ff]">
             Sign up
           </Link>
         </div>

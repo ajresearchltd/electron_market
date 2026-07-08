@@ -41,24 +41,24 @@ export default function WhyBuyersSection() {
   }, []);
 
   return (
-    <section className="bg-white py-16 md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-4xl font-extrabold tracking-tight text-[#0B2A5B] md:text-5xl">{title}</h2>
-          <p className="mt-4 text-lg leading-8 text-slate-600 md:text-xl">{description}</p>
+    <section className="bg-white py-8 md:py-10">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
+        <div className="mb-5">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
           {benefits.map((benefit) => {
             const Icon = benefit.icon;
             const pic = benefit.pic?.trim();
             return (
-              <article key={benefit.title} className="rounded-xl border border-slate-200 bg-white p-7 shadow-sm hover:border-blue-200 hover:shadow-md">
-                <div className="mb-6 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-lg font-bold text-blue-600">
-                  {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-20 w-20 rounded-full object-cover" /> : pic || <Icon size={42} aria-hidden="true" />}
+              <article key={benefit.title} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-200 hover:shadow-md">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-sm font-bold text-blue-600">
+                  {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-8 w-8 rounded-full object-cover" /> : pic || <Icon size={22} aria-hidden="true" />}
                 </div>
-                <h3 className="text-xl font-extrabold text-[#0B2A5B]">{benefit.title}</h3>
-                <p className="mt-2 text-base leading-7 text-slate-600">{benefit.description}</p>
+                <h3 className="text-sm font-bold text-slate-950">{benefit.title}</h3>
+                <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-600">{benefit.description}</p>
               </article>
             );
           })}

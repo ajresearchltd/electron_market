@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ArrowRight, ClipboardCheck, SearchCheck, Truck, UploadCloud } from 'lucide-react';
 import { isImagePath, loadHomepageContent } from './homepageContent';
 
 type Step = { number: string; pic: string | null; title: string; description: string };
@@ -11,6 +12,7 @@ const fallbackSteps: Step[] = [
   { number: '03', pic: null, title: 'Receive Quotes', description: 'Compare supplier responses, lead times, and pricing.' },
   { number: '04', pic: null, title: 'Order Confidently', description: 'Choose the best offer and move from RFQ to delivery.' },
 ];
+const stepIcons = [UploadCloud, SearchCheck, ClipboardCheck, Truck];
 const selectFields = 'section_2_title_1, section_2_title_2, section_2_pic_1, section_2_name_1, section_2_text_1, section_2_pic_2, section_2_name_2, section_2_text_2, section_2_pic_3, section_2_name_3, section_2_text_3, section_2_pic_4, section_2_name_4, section_2_text_4, section_2_link_button';
 
 export default function HowItWorksSection() {
@@ -37,26 +39,53 @@ export default function HowItWorksSection() {
   }, []);
 
   return (
-    <section id="how-it-works" className="bg-slate-50 py-16 md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">{title}</h2>
-          <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">{description}</p>
-        </div>
+    <section id="how-it-works" className="bg-[#f3f7fd] py-8 md:py-10">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
+        <div className="grid items-center gap-6 rounded-2xl border border-blue-100 bg-[#eef6ff] p-4 shadow-sm sm:p-5 lg:grid-cols-[1.55fr_0.85fr] lg:p-6">
+          <div>
+            <div className="mb-5">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
+            </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {steps.map((step) => {
-            const pic = step.pic?.trim();
-            return (
-              <article key={step.number} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md">
-                <div className="mb-5 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-blue-600 text-sm font-bold text-white">
-                  {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-8 w-8 object-contain" /> : pic || step.number}
-                </div>
-                <h3 className="text-lg font-bold text-slate-950">{step.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{step.description}</p>
-              </article>
-            );
-          })}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {steps.map((step, index) => {
+                const pic = step.pic?.trim();
+                const StepIcon = stepIcons[index] || UploadCloud;
+                return (
+                  <div key={step.number} className="relative">
+                    <article className="h-full rounded-xl border border-blue-100 bg-white p-4 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
+                      <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-100">
+                        {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-11 w-11 object-contain" /> : pic ? <span className="text-sm font-bold">{pic}</span> : <StepIcon size={30} aria-hidden="true" />}
+                      </div>
+                      <p className="text-[11px] font-bold uppercase tracking-wide text-blue-600">Step {step.number}</p>
+                      <h3 className="mt-1 text-sm font-bold text-slate-950">{step.title}</h3>
+                      <p className="mt-2 text-xs leading-5 text-slate-600">{step.description}</p>
+                    </article>
+                    {index < steps.length - 1 && (
+                      <div className="pointer-events-none absolute right-[-20px] top-1/2 z-10 hidden h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full border border-blue-100 bg-white text-blue-500 shadow-sm lg:flex">
+                        <ArrowRight size={16} aria-hidden="true" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <a href="#" className="mt-5 inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm shadow-blue-900/10 hover:bg-blue-500">
+              Learn more
+            </a>
+          </div>
+
+          <aside className="rounded-2xl border border-slate-200 bg-white p-4 shadow-md shadow-blue-950/5">
+            <div className="mb-4">
+              <h3 className="text-lg font-bold text-slate-950">AI-Powered BOM Analysis</h3>
+              <p className="mt-1 text-xs leading-5 text-slate-600">Upload a parts list and let intelligent matching speed up supplier discovery.</p>
+            </div>
+            <div className="flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-slate-950/95 p-3">
+              <img src="/reference/ai_bom.png" alt="AI-powered BOM analysis" className="max-h-full w-full object-contain" />
+            </div>
+          </aside>
         </div>
       </div>
     </section>

@@ -44,24 +44,24 @@ export default function NumbersSection() {
   }, []);
 
   return (
-    <section className="bg-gradient-to-br from-slate-900 to-blue-900 py-16 text-white md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-4xl font-extrabold tracking-tight text-white md:text-5xl">{title}</h2>
-          <p className="mt-4 text-lg leading-8 text-blue-100 md:text-xl">{description}</p>
+    <section className="bg-[#f5f8fc] py-8 md:py-10">
+      <div className="mx-auto max-w-[1180px] rounded-xl bg-gradient-to-br from-slate-950 to-blue-900 px-4 py-7 text-white shadow-sm sm:px-6 lg:px-8">
+        <div className="mb-6 text-center">
+          <h2 className="text-2xl font-bold tracking-tight text-white">{title}</h2>
+          <p className="mt-2 text-sm leading-6 text-blue-100">{description}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {numbers.map((item, index) => {
             const Icon = item.icon;
             const pic = item.pic?.trim();
             return (
-              <article key={`${item.label}-${index}`} className="rounded-xl border border-white/10 bg-white/10 p-7 text-center shadow-lg shadow-blue-950/20">
-                <div className="mx-auto mb-5 flex h-24 w-24 items-center justify-center overflow-hidden rounded-full bg-white/10 text-cyan-300">
-                  {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-20 w-20 rounded-full object-cover" /> : pic || <Icon size={44} aria-hidden="true" />}
+              <article key={`${item.label}-${index}`} className="rounded-lg border border-white/10 bg-white/10 p-4 text-center">
+                <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/10 text-cyan-300">
+                  {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-8 w-8 rounded-full object-cover" /> : pic || <Icon size={22} aria-hidden="true" />}
                 </div>
-                <div className="text-5xl font-extrabold text-white md:text-6xl">{item.value}</div>
-                <p className="mt-3 text-base font-semibold text-blue-100 md:text-lg">{item.label}</p>
+                <div className="text-2xl font-extrabold text-white md:text-3xl">{item.value}</div>
+                <p className="mt-1 text-xs font-semibold text-blue-100">{item.label}</p>
               </article>
             );
           })}

@@ -1,6 +1,7 @@
 import Header from './components/homepage/Header';
 import HeroSection from './components/homepage/HeroSection';
 import CategoriesSection from './components/homepage/CategoriesSection';
+import MarketingDiscountsSection from './components/homepage/MarketingDiscountsSection';
 import HowItWorksSection from './components/homepage/HowItWorksSection';
 import TopSuppliersSection from './components/homepage/TopSuppliersSection';
 import RecentRFQSection from './components/homepage/RecentRFQSection';
@@ -21,10 +22,11 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-white text-slate-950">
+    <main className="min-h-screen bg-[#f5f8fc] text-slate-950">
       <Header />
       <HeroSection />
       <CategoriesSection />
+      <MarketingDiscountsSection />
       <HowItWorksSection />
       <TopSuppliersSection />
       <RecentRFQSection />

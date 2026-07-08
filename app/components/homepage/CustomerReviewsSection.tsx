@@ -11,20 +11,20 @@ const reviews = [
 
 export default function CustomerReviewsSection() {
   return (
-    <section className="bg-white py-16 md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Customer Reviews</h2>
-          <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
+    <section className="bg-white py-8 md:py-10">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
+        <div className="mb-5 text-center">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">What Our Customers Say</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
             Procurement teams use ElectroMarket to simplify sourcing and supplier comparison.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {reviews.map((review) => (
-            <article key={review.name} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm hover:border-blue-200 hover:shadow-md">
-              <div className="mb-5 flex items-start gap-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-700">
+            <article key={review.name} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-200 hover:shadow-md">
+              <div className="mb-4 flex items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
                   {review.initials}
                 </div>
                 <div>
@@ -32,12 +32,12 @@ export default function CustomerReviewsSection() {
                   <p className="text-sm text-slate-500">{review.company}</p>
                 </div>
               </div>
-              <div className="mb-4 flex gap-1">
+              <div className="mb-3 flex gap-1">
                 {[...Array(5)].map((_, index) => (
                   <Star key={index} size={16} className={index < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'} />
                 ))}
               </div>
-              <p className="text-sm leading-6 text-slate-700">{review.text}</p>
+              <p className="text-sm leading-6 text-slate-700">"{review.text}"</p>
             </article>
           ))}
         </div>

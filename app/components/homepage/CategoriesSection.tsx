@@ -55,37 +55,39 @@ export default function CategoriesSection() {
   }, []);
 
   return (
-    <section id="categories" className="bg-white py-16 md:py-20">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto mb-12 max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Shop by Categories</h2>
-          <p className="mt-4 text-base leading-7 text-slate-600 md:text-lg">
+    <section id="categories" className="bg-white py-8 md:py-10">
+      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
+        <div className="mb-5 flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-slate-950">Shop by Categories</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
             Explore electronic components across the categories buyers source most often.
-          </p>
+            </p>
+          </div>
+          <a href="#categories" className="hidden text-xs font-semibold text-blue-700 hover:text-blue-800 sm:block">View all categories &rarr;</a>
         </div>
 
         <div className="overflow-x-auto pb-2">
-          <div className="flex min-w-max gap-4">
+          <div className="flex min-w-max gap-3">
             {categories.map((category) => {
               const Icon = category.icon ?? Box;
               const pic = category.pic?.trim();
               const title = category.name || 'Category';
 
               return (
-                <article key={category.cat_id} className="flex h-[220px] w-[180px] flex-shrink-0 flex-col items-center rounded-xl border border-slate-200 bg-white p-3 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
-                  <div className="flex h-[145px] w-full items-center justify-center overflow-hidden rounded-lg bg-blue-50 text-blue-600">
+                <article key={category.cat_id} className="flex h-[150px] w-[136px] flex-shrink-0 flex-col items-center rounded-lg border border-slate-200 bg-white p-2 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
+                  <div className="flex h-[92px] w-full items-center justify-center overflow-hidden rounded-md bg-[#f3f7fd] text-blue-600">
                     {pic ? (
                       isImagePath(pic) ? (
-                        <img src={pic} alt="" className="h-full w-full object-contain p-3" />
+                        <img src={pic} alt="" className="h-full w-full object-contain p-2" />
                       ) : (
                         <span className="text-sm font-bold text-blue-700">{pic}</span>
                       )
                     ) : (
-                      <Icon size={40} aria-hidden="true" />
+                      <Icon size={30} aria-hidden="true" />
                     )}
                   </div>
-                  <h3 className="mt-2 text-sm font-semibold leading-5 text-blue-950">{title}</h3>
-                  {category.text && <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-600">{category.text}</p>}
+                  <h3 className="mt-2 line-clamp-2 text-xs font-semibold leading-4 text-blue-950">{title}</h3>
                 </article>
               );
             })}
