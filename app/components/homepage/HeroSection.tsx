@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { loadHomepageContent } from './homepageContent';
+import AiOrderChatModal from '../ai/AiOrderChatModal';
 
 const fallbackStats = [
   { value: '5,000+', label: 'Verified Suppliers' },
@@ -24,8 +25,8 @@ const parseStat = (value: string | null | undefined, fallback: { value: string; 
 export default function HeroSection() {
   const [title, setTitle] = useState('Global Marketplace for Electronic Components and Equipment');
   const [subtitle, setSubtitle] = useState('Upload your BOM, get quotes from verified suppliers and source components faster and smarter.');
-  const [getBomHref, setGetBomHref] = useState('/create-request');
   const [stats, setStats] = useState(fallbackStats);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -35,7 +36,6 @@ export default function HeroSection() {
 
       setTitle(row.section_1_title_of_site || 'Global Marketplace for Electronic Components and Equipment');
       setSubtitle(row.section_1_subtitle_of_site || 'Upload your BOM, get quotes from verified suppliers and source components faster and smarter.');
-      setGetBomHref(row.section_1_link_to_get_bom || '/create-request');
       setStats(fallbackStats.map((stat, index) => parseStat(row[`section_1_under_title_${index + 1}`], stat)));
     };
 
@@ -57,17 +57,17 @@ export default function HeroSection() {
 
       <div className="relative mx-auto grid min-h-[470px] max-w-[1180px] grid-cols-1 items-center gap-8 px-4 py-10 sm:px-6 md:grid-cols-[0.46fr_0.54fr] md:py-12 lg:px-8">
         <div className="relative z-10 max-w-xl">
-          <h1 className="text-4xl font-extrabold leading-[1.02] tracking-tight text-white drop-shadow-2xl md:text-5xl lg:text-[56px]">
+          <h1 className="text-4xl font-semibold leading-[1.02] tracking-tight text-white drop-shadow-2xl md:text-5xl lg:text-[56px]">
             {fallbackTitle ? <>Global Marketplace for <span className="text-cyan-300">Electronic Components</span> and Equipment</> : title}
           </h1>
           <p className="mt-4 max-w-lg text-base leading-7 text-blue-100 drop-shadow md:text-lg">{subtitle}</p>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <Link href={getBomHref} className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-[#2f80ff] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 hover:bg-[#4d95ff]">
+            <button type="button" onClick={() => setIsChatOpen(true)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#2f80ff] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 hover:bg-[#4d95ff]">
               Upload BOM / Get Quotes
               <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            <Link href="/register/supplier" className="inline-flex h-11 items-center justify-center rounded-md border border-white/35 bg-white/[0.08] px-5 text-sm font-semibold text-white hover:bg-white/[0.15]">
+            </button>
+            <Link href="/register/supplier" className="inline-flex h-11 items-center justify-center rounded-xl border border-white/35 bg-white/[0.08] px-5 text-sm font-semibold text-white hover:bg-white/[0.15]">
               Register as supplier
             </Link>
           </div>
@@ -87,6 +87,7 @@ export default function HeroSection() {
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,45,0.08)_0%,rgba(3,20,45,0.5)_100%)]" />
         </div>
       </div>
+      <AiOrderChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </section>
   );
 }

@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
 import { getCurrentUserRole } from '../../../lib/auth/getCurrentUserRole';
 import { getDashboardPathByRole } from '../../../lib/auth/redirectByRole';
+import HubButton from '../../components/ui/HubButton';
 
 type CountryRow = {
   country_id: number;
@@ -234,6 +235,9 @@ export default function SupplierRegisterPage() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.3),transparent_30%),linear-gradient(135deg,#061b3f_0%,#082a63_48%,#071632_100%)] px-4 py-10 text-white sm:px-6 lg:px-8">
+      <Link href="/" className="absolute left-4 top-4 inline-flex items-center rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white backdrop-blur hover:bg-white/20 sm:left-6 lg:left-8">
+        &larr; Back
+      </Link>
       <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-[720px] items-center">
         <section className="w-full rounded-2xl border border-white/10 bg-white/96 p-6 text-slate-950 shadow-2xl shadow-blue-950/30 backdrop-blur">
           <p className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">Temporary auth page. Supabase Auth is active.</p>
@@ -340,13 +344,7 @@ export default function SupplierRegisterPage() {
               {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
               {message && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
 
-              <button
-                type="submit"
-                disabled={loading || countriesLoading || countries.length === 0}
-                className="inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? 'Creating account...' : 'Create Supplier Account'}
-              </button>
+              <HubButton type="submit" loading={loading} loadingText="Creating account..." disabled={countriesLoading || countries.length === 0} fullWidth>Create Supplier Account</HubButton>
             </form>
           ) : (
             <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5 text-sm text-slate-600">

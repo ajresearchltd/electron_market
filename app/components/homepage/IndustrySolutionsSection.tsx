@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Building2, Car, Factory, HeartPulse, RadioTower, Zap } from 'lucide-react';
 import { createClient } from '../../../lib/supabase/client';
 
@@ -12,19 +13,10 @@ type IndustrySolutionRow = {
   icon?: typeof Factory;
 };
 
-const fallbackSolutions: IndustrySolutionRow[] = [
-  { ind_id: 'fallback-1', title: 'Industrial Automation', text: 'PLCs, controllers, sensors, and automation components.', pic: null, icon: Factory },
-  { ind_id: 'fallback-2', title: 'Smart Cities', text: 'IoT devices, connectivity solutions, and smart infrastructure.', pic: null, icon: Building2 },
-  { ind_id: 'fallback-3', title: 'Renewable Energy', text: 'Solar inverters, charge controllers, and power management.', pic: null, icon: Zap },
-  { ind_id: 'fallback-4', title: 'Medical Devices', text: 'Diagnostic equipment, monitoring systems, and biomedical components.', pic: null, icon: HeartPulse },
-  { ind_id: 'fallback-5', title: 'Automotive Electronics', text: 'Vehicle control systems, sensors, and communication modules.', pic: null, icon: Car },
-  { ind_id: 'fallback-6', title: 'Consumer Electronics', text: 'Smart home devices, wearables, and portable electronics.', pic: null, icon: RadioTower },
-];
-
 const isImagePath = (value: string) => value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/');
 
 export default function IndustrySolutionsSection() {
-  const [solutions, setSolutions] = useState<IndustrySolutionRow[]>(fallbackSolutions);
+  const [solutions, setSolutions] = useState<IndustrySolutionRow[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -73,7 +65,8 @@ export default function IndustrySolutionsSection() {
             const Icon = solution.icon ?? Factory;
             const pic = solution.pic?.trim();
             return (
-              <article key={solution.ind_id} className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md">
+              <Link href={`/industry-solutions/${encodeURIComponent(solution.ind_id)}`} key={solution.ind_id}>
+              <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md">
                 <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-blue-50 text-blue-600">
                   {pic ? (
                     isImagePath(pic) ? (
@@ -89,7 +82,7 @@ export default function IndustrySolutionsSection() {
                   <h3 className="text-xs font-semibold leading-4 text-slate-950">{solution.title || 'Industry Solution'}</h3>
                   {solution.text && <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-600">{solution.text}</p>}
                 </div>
-              </article>
+              </article></Link>
             );
           })}
         </div>

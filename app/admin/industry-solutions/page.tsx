@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
+import HubButton from '../../components/ui/HubButton';
 
 type IndustrySolutionRow = {
   ind_id: string;
@@ -335,19 +336,13 @@ export default function AdminIndustrySolutionsPage() {
             </label>
 
             <div className="md:col-span-2 flex flex-wrap gap-3">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? 'Saving...' : editingId ? 'Update Industry Solution' : 'Create Industry Solution'}
-              </button>
+              <HubButton type="submit" loading={saving} loadingText="Saving...">{editingId ? 'Update Industry Solution' : 'Create Industry Solution'}</HubButton>
               {editingId && (
                 <button
                   type="button"
                   onClick={cancelEdit}
                   disabled={saving}
-                  className="inline-flex rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Cancel edit
                 </button>
@@ -362,14 +357,7 @@ export default function AdminIndustrySolutionsPage() {
               <h2 className="text-xl font-bold">Existing Industry Solutions</h2>
               <p className="mt-1 text-sm text-slate-500">Records are loaded from industry_solution and edited by ind_id.</p>
             </div>
-            <button
-              type="button"
-              onClick={loadSolutions}
-              disabled={loading || saving}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Refresh
-            </button>
+            <HubButton onClick={loadSolutions} disabled={saving} loading={loading} loadingText="Refreshing...">Refresh</HubButton>
           </div>
 
           <div className="overflow-x-auto">
@@ -421,7 +409,7 @@ export default function AdminIndustrySolutionsPage() {
                             type="button"
                             onClick={() => deleteSolution(solution.ind_id)}
                             disabled={saving}
-                            className="rounded-md border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="rounded-md border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Delete
                           </button>

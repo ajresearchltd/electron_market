@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function CreateRequestPage() {
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="hub-scope min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 py-12">
         <Link href="/" className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 mb-8">
           <ArrowLeft size={20} />

@@ -35,13 +35,14 @@ type RfqAssignmentRow = {
 };
 
 type StageKey =
-  | 'rfq_received'
-  | 'quote_sent'
-  | 'approved_rejected'
-  | 'buyer_paid'
+  | 'bom_received'
+  | 'rfq'
+  | 'quote_received'
+  | 'approved'
+  | 'payment'
   | 'goods_shipped'
-  | 'goods_received_by_buyer'
-  | 'funds_sent_to_supplier';
+  | 'goods_received'
+  | 'order_completed';
 
 type ActiveOrderRow = {
   orderId: string;
@@ -63,6 +64,31 @@ type IncomingRfqRow = {
   actionLabel: string;
 };
 
+type SupplierStockUploadRow = {
+  id: string;
+  upload_number: number | null;
+  document_name: string | null;
+  original_file_name: string | null;
+  created_at: string | null;
+  total_rows: number | null;
+  valid_rows: number | null;
+  error_rows: number | null;
+  status: string | null;
+  ai_processing_status: string | null;
+};
+
+type ProcurementProgressRow = {
+  id: string;
+  progress_number: number | null;
+  document_name: string | null;
+  customer_company_name: string | null;
+  supplier_company_name: string | null;
+  current_stage: string | null;
+  current_stage_label: string | null;
+  updated_at: string | null;
+  created_at: string | null;
+};
+
 type StageMeta = {
   label: string;
   bgClass: string;
@@ -70,23 +96,25 @@ type StageMeta = {
 };
 
 const stageOrder: StageKey[] = [
-  'rfq_received',
-  'quote_sent',
-  'approved_rejected',
-  'buyer_paid',
+  'bom_received',
+  'rfq',
+  'quote_received',
+  'approved',
+  'payment',
   'goods_shipped',
-  'goods_received_by_buyer',
-  'funds_sent_to_supplier',
+  'goods_received',
+  'order_completed',
 ];
 
 const stageMeta: Record<StageKey, StageMeta> = {
-  rfq_received: { label: 'RFQ Received', bgClass: 'bg-blue-500', textClass: 'text-white' },
-  quote_sent: { label: 'Quote Sent', bgClass: 'bg-emerald-500', textClass: 'text-white' },
-  approved_rejected: { label: 'Approved / Rejected', bgClass: 'bg-orange-500', textClass: 'text-white' },
-  buyer_paid: { label: 'Buyer Paid', bgClass: 'bg-violet-500', textClass: 'text-white' },
+  bom_received: { label: 'BOM received', bgClass: 'bg-blue-500', textClass: 'text-white' },
+  rfq: { label: 'RFQ', bgClass: 'bg-cyan-500', textClass: 'text-white' },
+  quote_received: { label: 'Quote received', bgClass: 'bg-emerald-500', textClass: 'text-white' },
+  approved: { label: 'Approved', bgClass: 'bg-orange-500', textClass: 'text-white' },
+  payment: { label: 'Payment', bgClass: 'bg-violet-500', textClass: 'text-white' },
   goods_shipped: { label: 'Goods Shipped', bgClass: 'bg-teal-500', textClass: 'text-white' },
-  goods_received_by_buyer: { label: 'Goods Received by Buyer', bgClass: 'bg-amber-400', textClass: 'text-slate-900' },
-  funds_sent_to_supplier: { label: 'Funds Sent to You', bgClass: 'bg-emerald-700', textClass: 'text-white' },
+  goods_received: { label: 'Goods received', bgClass: 'bg-amber-400', textClass: 'text-slate-900' },
+  order_completed: { label: 'Order completed', bgClass: 'bg-emerald-700', textClass: 'text-white' },
 };
 
 const initialCompanyName = 'Your company';
@@ -160,7 +188,15 @@ const normalizeStage = (value: string | null | undefined): StageKey => {
   if (value && stageOrder.includes(value as StageKey)) {
     return value as StageKey;
   }
-  return 'rfq_received';
+  const normalized = String(value || '').toLowerCase();
+  if (normalized.includes('completed') || normalized.includes('funds_sent')) return 'order_completed';
+  if (normalized.includes('received')) return 'goods_received';
+  if (normalized.includes('shipped')) return 'goods_shipped';
+  if (normalized.includes('paid') || normalized.includes('payment')) return 'payment';
+  if (normalized.includes('approved')) return 'approved';
+  if (normalized.includes('quote')) return 'quote_received';
+  if (normalized.includes('rfq')) return 'rfq';
+  return 'bom_received';
 };
 
 function StageProgress({ currentStage }: { currentStage: StageKey }) {
@@ -225,9 +261,18 @@ function AlertBox({ tone, children }: { tone: 'error' | 'warning'; children: Rea
 const tableHeaderCellClass = 'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white';
 const emptyTableCellClass = 'px-4 py-8 text-center text-sm text-slate-600';
 
+const statusBadgeClass = (value: string | null | undefined) => {
+  const normalized = (value ?? '').toLowerCase();
+  if (normalized.includes('error') || normalized.includes('failed')) return 'bg-red-100 text-red-700';
+  if (normalized.includes('warning')) return 'bg-amber-100 text-amber-700';
+  if (normalized.includes('valid') || normalized.includes('complete') || normalized.includes('processed')) return 'bg-emerald-100 text-emerald-700';
+  return 'bg-blue-100 text-blue-700';
+};
+
 export default function SupplierDashboardPage() {
   const supabase = useMemo(() => createClient(), []);
   const [companyName, setCompanyName] = useState(initialCompanyName);
+  const [userEmail, setUserEmail] = useState('');
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [incomingRfqs, setIncomingRfqs] = useState<IncomingRfqRow[]>([]);
   const [activeOrderRows, setActiveOrderRows] = useState<ActiveOrderRow[]>([]);
@@ -236,6 +281,10 @@ export default function SupplierDashboardPage() {
   const [metricsError, setMetricsError] = useState('');
   const [rfqError, setRfqError] = useState('');
   const [activeOrdersError, setActiveOrdersError] = useState('');
+  const [availabilityUploads, setAvailabilityUploads] = useState<SupplierStockUploadRow[]>([]);
+  const [availabilityError, setAvailabilityError] = useState('');
+  const [progressRows, setProgressRows] = useState<ProcurementProgressRow[]>([]);
+  const [progressError, setProgressError] = useState('');
 
   const kpiCards = [
     { label: 'Open RFQs', value: metrics.openRfqs, caption: 'Buyer requests waiting for quotes' },
@@ -250,6 +299,7 @@ export default function SupplierDashboardPage() {
     const loadProfile = async () => {
       const { data: authData } = await supabase.auth.getUser();
       if (!active || !authData.user) return;
+      setUserEmail(authData.user.email || '');
 
       const metadataCompany = (authData.user.user_metadata?.company_name as string | undefined)?.trim();
       const metadataFullName = (authData.user.user_metadata?.full_name as string | undefined)?.trim();
@@ -288,9 +338,11 @@ export default function SupplierDashboardPage() {
       setMetricsError('');
       setRfqError('');
       setActiveOrdersError('');
+      setAvailabilityError('');
+      setProgressError('');
 
       const { data: dashboardAuthData } = await supabase.auth.getUser();
-      const supplierId = dashboardAuthData.user?.id;
+      const authUserId = dashboardAuthData.user?.id;
 
       const [openRfqsResult, quotesSentResult, activeOrdersCountResult, paymentsPendingResult, activeOrdersResult] = await Promise.all([
         supabase.from('rfq_orders0').select('rfq_id', { count: 'exact', head: true }).eq('rfq_status', 'open'),
@@ -339,14 +391,28 @@ export default function SupplierDashboardPage() {
         setActiveOrderRows(rows);
       }
 
-      if (!supplierId) {
+      if (!authUserId) {
         setIncomingRfqs([]);
+        setAvailabilityUploads([]);
+        setProgressRows([]);
         setRfqError('You must be signed in to view assigned RFQs.');
+        setAvailabilityError('You must be signed in to view product availability uploads.');
+        setProgressError('You must be signed in to view progress.');
       } else {
+        const progressResponse = await fetch('/api/progress/supplier');
+        const progressResult = await progressResponse.json().catch(() => ({}));
+        if (!active) return;
+        if (progressResponse.ok) {
+          setProgressRows((progressResult.progress ?? []) as ProcurementProgressRow[]);
+        } else {
+          setProgressRows([]);
+          setProgressError(progressResult.error || 'Unable to load supplier progress.');
+        }
+
         const assignmentsResult = await supabase
           .from('rfq_supplier_assignments')
           .select('assignment_id, rfq_id, order_number, assignment_status')
-          .eq('supplier_id', supplierId)
+          .eq('supplier_id', authUserId)
           .order('assigned_at', { ascending: false });
 
         if (!active) return;
@@ -434,6 +500,51 @@ export default function SupplierDashboardPage() {
             }
           }
         }
+
+        const { data: supplierProfile } = await supabase
+          .from('supplier_company_profiles')
+          .select('company_name, company_email')
+          .eq('user_id', authUserId)
+          .maybeSingle();
+
+        if (!active) return;
+
+        const supplierEmail = supplierProfile?.company_email || dashboardAuthData.user?.email || '';
+        const supplierCompanyName = supplierProfile?.company_name || '';
+        let productSupplierId = '';
+
+        if (supplierEmail) {
+          const { data: supplierByContact } = await supabase.from('suppliers').select('supplier_id').eq('contact_email', supplierEmail).maybeSingle();
+          productSupplierId = supplierByContact?.supplier_id || '';
+          if (!productSupplierId) {
+            const { data: supplierByEmail } = await supabase.from('suppliers').select('supplier_id').eq('email', supplierEmail).maybeSingle();
+            productSupplierId = supplierByEmail?.supplier_id || '';
+          }
+        }
+
+        if (!productSupplierId && supplierCompanyName) {
+          const { data: supplierByCompany } = await supabase.from('suppliers').select('supplier_id').eq('company_name', supplierCompanyName).maybeSingle();
+          productSupplierId = supplierByCompany?.supplier_id || '';
+        }
+
+        if (!productSupplierId) {
+          setAvailabilityUploads([]);
+        } else {
+          const uploadsResult = await supabase
+            .from('supplier_stock_uploads')
+            .select('id, upload_number, document_name, original_file_name, created_at, total_rows, valid_rows, error_rows, status, ai_processing_status')
+            .eq('supplier_id', productSupplierId)
+            .order('created_at', { ascending: false });
+
+          if (!active) return;
+
+          if (uploadsResult.error) {
+            setAvailabilityUploads([]);
+            setAvailabilityError(uploadsResult.error.message);
+          } else {
+            setAvailabilityUploads((uploadsResult.data ?? []) as SupplierStockUploadRow[]);
+          }
+        }
       }
 
       setPageLoading(false);
@@ -464,6 +575,20 @@ export default function SupplierDashboardPage() {
     );
   };
 
+  const advanceSupplierProgress = async (progressId: string) => {
+    const response = await fetch(`/api/progress/${progressId}/advance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ next_stage: 'quote_received', note: 'Supplier quote received' }),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setProgressError(result.error || 'Unable to update supplier progress.');
+      return;
+    }
+    setProgressRows((current) => current.map((row) => (row.id === progressId ? result.progress : row)));
+  };
+
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900">
       <header className="border-b border-slate-800 bg-[#071632] text-white">
@@ -474,6 +599,11 @@ export default function SupplierDashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {userEmail && (
+              <p className="max-w-[220px] truncate text-sm font-medium text-white" title={userEmail}>
+                {userEmail}
+              </p>
+            )}
             <div className="text-right">
               <button
                 type="button"
@@ -517,6 +647,65 @@ export default function SupplierDashboardPage() {
         </section>
 
         {metricsError && <AlertBox tone="warning">Metrics warning: {metricsError}</AlertBox>}
+
+        <SectionCard title="Progress" centeredTitle>
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+              <thead className="bg-blue-600 text-white">
+                <tr>
+                  <th className={tableHeaderCellClass}>Progress No</th>
+                  <th className={tableHeaderCellClass}>Customer</th>
+                  <th className={tableHeaderCellClass}>Document / RFQ</th>
+                  <th className={tableHeaderCellClass}>Current Stage</th>
+                  <th className={tableHeaderCellClass}>Progress</th>
+                  <th className={tableHeaderCellClass}>Updated</th>
+                  <th className={tableHeaderCellClass}>Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+                {progressError ? (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-4"><AlertBox tone="warning">Progress warning: {progressError}</AlertBox></td>
+                  </tr>
+                ) : pageLoading && !progressRows.length ? (
+                  <tr><td colSpan={7} className={emptyTableCellClass}>Loading progress...</td></tr>
+                ) : progressRows.length === 0 ? (
+                  <tr><td colSpan={7} className={emptyTableCellClass}>No assigned progress yet.</td></tr>
+                ) : (
+                  progressRows.map((row) => {
+                    const stage = normalizeStage(row.current_stage);
+                    return (
+                      <tr key={row.id}>
+                        <td className="px-4 py-3 font-semibold text-slate-900">#{row.progress_number ?? '—'}</td>
+                        <td className="px-4 py-3">{row.customer_company_name || '—'}</td>
+                        <td className="px-4 py-3">{row.document_name || '—'}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${stageMeta[stage].bgClass} ${stageMeta[stage].textClass}`}>
+                            {stageMeta[stage].label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3"><StageProgress currentStage={stage} /></td>
+                        <td className="px-4 py-3">{formatDate(row.updated_at || row.created_at)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            {row.current_stage === 'rfq' && (
+                              <button type="button" onClick={() => advanceSupplierProgress(row.id)} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800 hover:text-white">
+                                Send Quote
+                              </button>
+                            )}
+                            <button type="button" className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-800 hover:text-white">
+                              View Details
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
 
         <SectionCard
           id="incoming-buyer-rfqs"
@@ -651,33 +840,86 @@ export default function SupplierDashboardPage() {
             <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
               <thead className="bg-blue-600 text-white">
                 <tr>
-                  <th className={tableHeaderCellClass}>Part Number</th>
-                  <th className={tableHeaderCellClass}>Manufacturer</th>
-                  <th className={tableHeaderCellClass}>Quantity Available</th>
-                  <th className={tableHeaderCellClass}>Lead Time</th>
-                  <th className={tableHeaderCellClass}>Stock Status</th>
+                  <th className={tableHeaderCellClass}>Upload No</th>
+                  <th className={tableHeaderCellClass}>Document Name</th>
+                  <th className={tableHeaderCellClass}>File Name</th>
+                  <th className={tableHeaderCellClass}>Uploaded</th>
+                  <th className={tableHeaderCellClass}>Total</th>
+                  <th className={tableHeaderCellClass}>Valid</th>
+                  <th className={tableHeaderCellClass}>Errors</th>
+                  <th className={tableHeaderCellClass}>Status</th>
+                  <th className={tableHeaderCellClass}>AI Status</th>
+                  <th className={tableHeaderCellClass}>Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-                <tr>
-                  <td colSpan={5} className={emptyTableCellClass}>
-                    Product availability data will appear here after you upload your stock list.
-                  </td>
-                </tr>
+                {availabilityError ? (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-4">
+                      <AlertBox tone="error">{availabilityError}</AlertBox>
+                    </td>
+                  </tr>
+                ) : pageLoading && !availabilityUploads.length ? (
+                  <tr>
+                    <td colSpan={10} className={emptyTableCellClass}>Loading product availability uploads...</td>
+                  </tr>
+                ) : availabilityUploads.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className={emptyTableCellClass}>
+                      <div className="flex flex-col items-center gap-3">
+                        <span>No product availability uploads yet.</span>
+                        <Link href="/supplier/products/upload" className="site-button rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                          Upload Product List
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  availabilityUploads.map((upload) => (
+                    <tr
+                      key={upload.id}
+                      className="cursor-pointer hover:bg-blue-50"
+                      onClick={() => { window.location.href = `/supplier/product-availability/${upload.id}`; }}
+                    >
+                      <td className="px-4 py-3 font-semibold text-slate-900">#{upload.upload_number ?? '—'}</td>
+                      <td className="px-4 py-3">{upload.document_name || '—'}</td>
+                      <td className="px-4 py-3">{upload.original_file_name || '—'}</td>
+                      <td className="px-4 py-3">{formatDate(upload.created_at)}</td>
+                      <td className="px-4 py-3">{upload.total_rows ?? 0}</td>
+                      <td className="px-4 py-3">{upload.valid_rows ?? 0}</td>
+                      <td className="px-4 py-3">{upload.error_rows ?? 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(upload.status)}`}>
+                          {humanizeKey(upload.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadgeClass(upload.ai_processing_status)}`}>
+                          {humanizeKey(upload.ai_processing_status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Link href={`/supplier/product-availability/${upload.id}`} className="font-semibold text-blue-700 hover:text-blue-800">
+                          View
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <button type="button" className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-              Add Product
-            </button>
-            <button type="button" className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
-              Upload Stock List
-            </button>
-            <button type="button" className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+            <Link href="/supplier/products/new" className="site-button rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
+              Add product
+            </Link>
+            <Link href="/supplier/products/upload" className="site-button rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Upload Product List
+            </Link>
+            <Link href="/supplier/products" className="site-button rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               Manage Products
-            </button>
+            </Link>
           </div>
         </SectionCard>
 

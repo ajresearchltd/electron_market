@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../../lib/supabase/client';
+import HubButton from '../../../components/ui/HubButton';
 
 const PROFILE_TABLE = 'supplier_company_profiles';
 const CONTACTS_TABLE = 'supplier_company_contacts';
@@ -775,9 +776,7 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
             <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
               Cancel
             </button>
-            <button type="submit" disabled={saving || loading} className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300">
-              {saving ? 'Saving...' : 'Save Changes'}
-            </button>
+            <HubButton type="submit" loading={saving} loadingText="Saving..." disabled={loading}>Save Changes</HubButton>
           </div>
         </form>
       </div>

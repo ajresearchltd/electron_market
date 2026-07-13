@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
+import HubButton from '../../components/ui/HubButton';
 
 type FieldConfig = { key: string; label: string };
 type FieldGroup = { title: string; description: string; fields: FieldConfig[] };
@@ -447,12 +448,8 @@ export default function AdminHomepageContentPage() {
               <p className="mt-2 text-sm text-slate-500">{loadedRow?.homepage_content_id ? `homepage_content_id: ${loadedRow.homepage_content_id}` : 'No homepage_content row loaded.'}</p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <button type="button" onClick={handleLoadLanguage} disabled={loading || saving || creating} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60">
-                {loading ? 'Loading...' : 'Load language content'}
-              </button>
-              <button type="button" onClick={createContentRow} disabled={creating || saving || loading} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-                {creating ? 'Creating...' : 'Create homepage_content row'}
-              </button>
+              <HubButton onClick={handleLoadLanguage} disabled={saving || creating} loading={loading} loadingText="Loading...">Load language content</HubButton>
+              <HubButton onClick={createContentRow} disabled={saving || loading} loading={creating} loadingText="Creating...">Create homepage_content row</HubButton>
             </div>
           </div>
         </section>
@@ -496,9 +493,7 @@ export default function AdminHomepageContentPage() {
             ))}
 
             <div className="sticky bottom-4 z-10 rounded-xl border border-slate-200 bg-white/95 p-4 text-slate-950 shadow-xl backdrop-blur">
-              <button type="button" onClick={saveContent} disabled={saving} className="inline-flex rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">
-                {saving ? 'Saving...' : 'Save homepage_content'}
-              </button>
+              <HubButton onClick={saveContent} loading={saving} loadingText="Saving...">Save homepage_content</HubButton>
             </div>
           </div>
         )}

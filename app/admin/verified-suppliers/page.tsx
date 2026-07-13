@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
+import HubButton from '../../components/ui/HubButton';
 
 type SupplierRow = {
   supplier_id: string;
@@ -22,10 +23,8 @@ const emptyForm: SupplierForm = {
   delivery_product: '',
 };
 
-const acceptedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
+const acceptedImageTypes = ['image/png', 'image/jpeg', 'image/webp'];
 const maxImageSize = 2 * 1024 * 1024;
-const bucketName = 'verified-supplier-images';
-const bucketErrorMessage = 'Supabase Storage bucket verified-supplier-images is missing or not public, or upload policy is missing.';
 
 const toFormValue = (value: string | null) => value ?? '';
 const toNullable = (value: string) => {
@@ -33,7 +32,6 @@ const toNullable = (value: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 const isImagePath = (value: string) => value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/') || value.startsWith('blob:');
-const sanitizeFileName = (name: string) => name.toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^-+|-+$/g, '');
 
 function ImagePreview({ src }: { src: string }) {
   return (
@@ -62,6 +60,7 @@ export default function AdminVerifiedSuppliersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const loadSuppliers = async () => {
     setLoading(true);
@@ -95,7 +94,7 @@ export default function AdminVerifiedSuppliersPage() {
 
   const validateImageFile = (file: File) => {
     if (!acceptedImageTypes.includes(file.type)) {
-      return 'Please select a PNG, JPEG, WebP, or SVG image.';
+      return 'Please select a PNG, JPEG, or WebP image.';
     }
 
     if (file.size > maxImageSize) {
@@ -139,28 +138,6 @@ export default function AdminVerifiedSuppliersPage() {
     setEditPreview(URL.createObjectURL(file));
   };
 
-  const uploadSupplierImage = async (file: File, supplierHint: string) => {
-    const extension = file.name.includes('.') ? file.name.split('.').pop() : 'img';
-    const baseName = sanitizeFileName(file.name.replace(/\.[^.]+$/, '')) || 'supplier-logo';
-    const idPart = sanitizeFileName(supplierHint) || crypto.randomUUID();
-    const path = `${idPart}/${Date.now()}-${baseName}.${extension}`;
-
-    const { data, error: uploadError } = await supabase.storage
-      .from(bucketName)
-      .upload(path, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type,
-      });
-
-    if (uploadError) {
-      throw new Error(`${bucketErrorMessage} ${uploadError.message}`);
-    }
-
-    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
-    return publicUrlData.publicUrl || data.path;
-  };
-
   const resetCreateImage = () => {
     if (createPreview.startsWith('blob:')) URL.revokeObjectURL(createPreview);
     setCreateFile(null);
@@ -176,26 +153,23 @@ export default function AdminVerifiedSuppliersPage() {
   const createSupplier = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setSuccess(null);
     setSaving(true);
 
     try {
-      let picValue = toNullable(newSupplier.pic);
-      if (createFile) {
-        picValue = await uploadSupplierImage(createFile, newSupplier.name);
-      }
-
-      const payload = {
-        name: toNullable(newSupplier.name),
-        pic: picValue,
-        delivery_product: toNullable(newSupplier.delivery_product),
-      };
-
-      const { error: insertError } = await supabase.from('verified_supplier').insert(payload);
-      if (insertError) throw new Error(insertError.message);
+      const body = new FormData();
+      body.set('name', newSupplier.name);
+      body.set('pic', newSupplier.pic);
+      body.set('delivery_product', newSupplier.delivery_product);
+      if (createFile) body.set('file', createFile);
+      const response = await fetch('/api/admin/verified-suppliers', { method: 'POST', body });
+      const result = await response.json();
+      if (!response.ok) throw new Error([result.error, result.detail].filter(Boolean).join(' '));
 
       setNewSupplier(emptyForm);
       resetCreateImage();
       await loadSuppliers();
+      setSuccess(`Verified supplier created successfully. ID: ${result.supplier.supplier_id}`);
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : 'Failed to create supplier.');
     } finally {
@@ -223,26 +197,19 @@ export default function AdminVerifiedSuppliersPage() {
   const saveEdit = async (supplierId: string) => {
     setSaving(true);
     setError(null);
+    setSuccess(null);
 
     try {
-      let picValue = toNullable(editForm.pic);
-      if (editFile) {
-        picValue = await uploadSupplierImage(editFile, supplierId);
-      }
-
-      const { error: updateError } = await supabase
-        .from('verified_supplier')
-        .update({
-          name: toNullable(editForm.name),
-          pic: picValue,
-          delivery_product: toNullable(editForm.delivery_product),
-        })
-        .eq('supplier_id', supplierId);
-
-      if (updateError) throw new Error(updateError.message);
+      const body = new FormData();
+      body.set('name', editForm.name); body.set('pic', editForm.pic); body.set('delivery_product', editForm.delivery_product);
+      if (editFile) body.set('file', editFile);
+      const response = await fetch(`/api/admin/verified-suppliers/${encodeURIComponent(supplierId)}`, { method: 'PUT', body });
+      const result = await response.json();
+      if (!response.ok) throw new Error([result.error, result.detail].filter(Boolean).join(' '));
 
       cancelEdit();
       await loadSuppliers();
+      setSuccess(`Verified supplier ${supplierId} updated successfully.`);
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : 'Failed to update supplier.');
     } finally {
@@ -256,16 +223,14 @@ export default function AdminVerifiedSuppliersPage() {
 
     setSaving(true);
     setError(null);
-
-    const { error: deleteError } = await supabase
-      .from('verified_supplier')
-      .delete()
-      .eq('supplier_id', supplierId);
-
-    if (deleteError) {
-      setError(deleteError.message);
+    setSuccess(null);
+    const response = await fetch(`/api/admin/verified-suppliers/${encodeURIComponent(supplierId)}`, { method: 'DELETE' });
+    const result = await response.json();
+    if (!response.ok) {
+      setError([result.error, result.detail].filter(Boolean).join(' '));
     } else {
       await loadSuppliers();
+      setSuccess(`Verified supplier ${supplierId} deleted successfully.`);
     }
 
     setSaving(false);
@@ -275,9 +240,7 @@ export default function AdminVerifiedSuppliersPage() {
     <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.35),transparent_30%),linear-gradient(135deg,#061b3f_0%,#082a63_48%,#071632_100%)] py-10 text-white">
       <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <p className="mb-3 inline-flex rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
-            Temporary admin page. Authentication will be added later.
-          </p>
+          <p className="mb-3 inline-flex rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-800">Administrator access required</p>
           <h1 className="text-3xl font-bold tracking-tight text-white">Verified Suppliers Admin</h1>
           <p className="mt-2 text-blue-100">Manage records from the Supabase table verified_supplier.</p>
           <p className="mt-1 text-sm text-blue-200">Actual fields: supplier_id, name, pic, delivery_product.</p>
@@ -288,6 +251,7 @@ export default function AdminVerifiedSuppliersPage() {
             {error}
           </div>
         )}
+        {success && <div className="mb-6 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{success}</div>}
 
         <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 text-slate-950 shadow-xl shadow-blue-950/20">
           <h2 className="text-xl font-bold">Create Verified Supplier</h2>
@@ -331,13 +295,7 @@ export default function AdminVerifiedSuppliersPage() {
             </label>
 
             <div className="md:col-span-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? 'Saving...' : 'Create Verified Supplier'}
-              </button>
+              <HubButton type="submit" loading={saving} loadingText="Saving...">Create Verified Supplier</HubButton>
             </div>
           </form>
         </section>
@@ -348,14 +306,7 @@ export default function AdminVerifiedSuppliersPage() {
               <h2 className="text-xl font-bold">Existing Verified Suppliers</h2>
               <p className="mt-1 text-sm text-slate-500">supplier_id is used as the record identifier and is not edited after creation.</p>
             </div>
-            <button
-              type="button"
-              onClick={loadSuppliers}
-              disabled={loading || saving}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Refresh
-            </button>
+            <HubButton onClick={loadSuppliers} disabled={saving} loading={loading} loadingText="Refreshing...">Refresh</HubButton>
           </div>
 
           <div className="overflow-x-auto">
@@ -435,7 +386,7 @@ export default function AdminVerifiedSuppliersPage() {
                                 type="button"
                                 onClick={() => saveEdit(supplier.supplier_id)}
                                 disabled={saving}
-                                className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-800 hover:text-white active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Save
                               </button>
@@ -443,7 +394,7 @@ export default function AdminVerifiedSuppliersPage() {
                                 type="button"
                                 onClick={cancelEdit}
                                 disabled={saving}
-                                className="rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Cancel
                               </button>
@@ -461,7 +412,7 @@ export default function AdminVerifiedSuppliersPage() {
                                 type="button"
                                 onClick={() => deleteSupplier(supplier.supplier_id)}
                                 disabled={saving}
-                                className="rounded-md border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-md border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Delete
                               </button>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
+import HubButton from '../../components/ui/HubButton';
 
 type DiscountRow = {
   id: string;
@@ -265,7 +266,7 @@ export default function AdminDiscountPricesPage() {
   const previewSource = filePreview || formData.image_url;
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-950">
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-slate-950">
       <section className="bg-[#07152f] px-4 py-8 text-white sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -273,7 +274,7 @@ export default function AdminDiscountPricesPage() {
             <h1 className="mt-2 text-3xl font-bold">Discount Prices</h1>
             <p className="mt-2 text-blue-100">Manage the Special Offers cards shown under Shop by Categories.</p>
           </div>
-          <Link href="/admin" className="inline-flex h-10 items-center justify-center rounded-md border border-white/30 px-4 text-sm font-semibold text-white hover:bg-white/10">
+          <Link href="/admin" className="inline-flex h-10 items-center justify-center rounded-md border border-white/30 px-4 text-sm font-medium text-white hover:bg-white/10">
             Back to Admin
           </Link>
         </div>
@@ -381,9 +382,7 @@ export default function AdminDiscountPricesPage() {
             </div>
           </div>
 
-          <button type="submit" disabled={saving} className="mt-5 inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60">
-            {saving ? 'Saving...' : editingId ? 'Save changes' : 'Create Special Offer'}
-          </button>
+          <HubButton type="submit" loading={saving} loadingText="Saving..." className="mt-5 h-10">{editingId ? 'Save changes' : 'Create Special Offer'}</HubButton>
         </form>
 
         <div className="rounded-xl border border-slate-200 bg-white shadow-sm">

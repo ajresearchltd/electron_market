@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Star } from 'lucide-react';
 import { createClient } from '../../../lib/supabase/client';
 
@@ -14,19 +15,12 @@ type SupplierRow = {
   products?: string;
 };
 
-const fallbackSuppliers: SupplierRow[] = [
-  { supplier_id: 'fallback-1', name: 'Tech Electronics Ltd', pic: null, delivery_product: 'Industrial control modules and embedded components.', country: 'Germany', rating: 4.8, products: '50K+' },
-  { supplier_id: 'fallback-2', name: 'Global Components Co', pic: null, delivery_product: 'Semiconductors, connectors, and passive components.', country: 'China', rating: 4.7, products: '120K+' },
-  { supplier_id: 'fallback-3', name: 'Euro Supply Group', pic: null, delivery_product: 'Power electronics, sensors, and automation parts.', country: 'Poland', rating: 4.9, products: '80K+' },
-  { supplier_id: 'fallback-4', name: 'Asia Pacific Dist', pic: null, delivery_product: 'Wireless modules, displays, and optoelectronics.', country: 'Taiwan', rating: 4.6, products: '95K+' },
-];
-
 const isImagePath = (value: string) => {
   return value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/');
 };
 
 export default function TopSuppliersSection() {
-  const [suppliers, setSuppliers] = useState<SupplierRow[]>(fallbackSuppliers);
+  const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -45,7 +39,7 @@ export default function TopSuppliersSection() {
 
       if (error || !data || data.length === 0) {
         if (error) {
-          console.warn('Top Verified Suppliers fallback active. Supabase select failed for verified_supplier.', error.message);
+          console.warn('Top Verified Suppliers query failed.', error.message);
         }
         return;
       }
@@ -78,10 +72,12 @@ export default function TopSuppliersSection() {
               {suppliers.map((supplier) => {
                 const name = supplier.name || 'Verified Supplier';
                 const pic = supplier.pic?.trim();
+                const supplierId = String(supplier.supplier_id ?? '').trim();
+                if (!supplierId) return null;
 
                 return (
-                  <article key={supplier.supplier_id} className="flex min-h-[118px] items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm hover:border-blue-200 hover:shadow-md">
-                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-blue-50 to-slate-50 text-sm font-bold uppercase tracking-wide text-blue-700 ring-1 ring-slate-100">
+                  <Link href={`/suppliers/${encodeURIComponent(supplierId)}`} key={supplierId} className="group flex min-h-[118px] cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:border-blue-600 hover:bg-blue-600 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
+                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-blue-50 to-slate-50 text-sm font-bold uppercase tracking-wide text-blue-700 ring-1 ring-slate-100 transition-colors duration-200 group-hover:bg-white group-hover:from-white group-hover:to-white">
                       {pic && isImagePath(pic) ? (
                         <img src={pic} alt="" className="h-full w-full object-contain p-2" />
                       ) : (
@@ -89,20 +85,20 @@ export default function TopSuppliersSection() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-sm font-bold text-slate-950">{name}</h3>
-                      {supplier.country && <p className="mt-1 text-xs text-slate-500">{supplier.country}</p>}
+                      <h3 className="truncate text-sm font-bold text-slate-950 transition-colors duration-200 group-hover:text-white">{name}</h3>
+                      {supplier.country && <p className="mt-1 text-xs text-slate-500 transition-colors duration-200 group-hover:text-blue-100">{supplier.country}</p>}
                       {supplier.rating && (
                         <div className="mt-2 flex items-center gap-1">
                           {[...Array(5)].map((_, index) => (
                             <Star key={index} size={12} className={index < Math.floor(supplier.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'} />
                           ))}
-                          <span className="ml-1 text-xs font-bold text-slate-900">{supplier.rating}</span>
+                          <span className="ml-1 text-xs font-bold text-slate-900 group-hover:text-white">{supplier.rating}</span>
                         </div>
                       )}
-                      {supplier.delivery_product && <p className="mt-2 line-clamp-2 text-xs font-medium leading-4 text-slate-600">{supplier.delivery_product}</p>}
-                      {supplier.products && <p className="mt-2 text-xs font-medium text-slate-600">{supplier.products} Products</p>}
+                      {supplier.delivery_product && <p className="mt-2 line-clamp-2 text-xs font-medium leading-4 text-slate-600 group-hover:text-blue-50">{supplier.delivery_product}</p>}
+                      {supplier.products && <p className="mt-2 text-xs font-medium text-slate-600 group-hover:text-blue-100">{supplier.products} Products</p>}
                     </div>
-                  </article>
+                  </Link>
                 );
               })}
             </div>

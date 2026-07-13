@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
 
@@ -13,17 +14,8 @@ type MarketingDiscount = {
   sort_order: number;
 };
 
-const fallbackDiscounts: MarketingDiscount[] = [
-  { id: 'fallback-1', company_name: 'ElectroMarket Deals', title: 'Microcontrollers', subtitle: 'Bulk MCU sourcing deals', image_url: '/reference/ai_bom.png', discount_text: '15% OFF', sort_order: 1 },
-  { id: 'fallback-2', company_name: 'Power Partner', title: 'Power Modules', subtitle: 'Compact power solutions', image_url: '/reference/friz_1.jpg', discount_text: '20% OFF', sort_order: 2 },
-  { id: 'fallback-3', company_name: 'Sensor Hub', title: 'Sensors', subtitle: 'Motion and monitoring parts', image_url: '/reference/ver_pro.png', discount_text: '10% OFF', sort_order: 3 },
-  { id: 'fallback-4', company_name: 'Connector Source', title: 'Connectors', subtitle: 'Board and cable inventory', image_url: '/reference/friz_1.jpg', discount_text: '25% OFF', sort_order: 4 },
-  { id: 'fallback-5', company_name: 'Industrial Supply', title: 'Industrial Boards', subtitle: 'Factory-ready controller stock', image_url: '/reference/ai_bom.png', discount_text: '12% OFF', sort_order: 5 },
-  { id: 'fallback-6', company_name: 'Wireless Lab', title: 'Wireless Modules', subtitle: 'IoT and RF component offers', image_url: '/reference/ver_pro.png', discount_text: '18% OFF', sort_order: 6 },
-];
-
 export default function MarketingDiscountsSection() {
-  const [discounts, setDiscounts] = useState<MarketingDiscount[]>(fallbackDiscounts);
+  const [discounts, setDiscounts] = useState<MarketingDiscount[]>([]);
 
   useEffect(() => {
     let active = true;
@@ -35,7 +27,7 @@ export default function MarketingDiscountsSection() {
         .select('id, company_name, title, subtitle, image_url, discount_text, sort_order')
         .eq('is_active', true)
         .order('sort_order', { ascending: true })
-        .limit(6);
+        .limit(5);
 
       if (!active) {
         return;
@@ -48,7 +40,7 @@ export default function MarketingDiscountsSection() {
         return;
       }
 
-      setDiscounts(data);
+      setDiscounts(data.slice(0, 5));
     };
 
     loadDiscounts();
@@ -59,31 +51,38 @@ export default function MarketingDiscountsSection() {
   }, []);
 
   return (
-    <section id="special-offers" className="bg-[#f5f8fc] py-8 md:py-10">
-      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
-        <div className="mb-5">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-950">Special Offers</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+    <section id="special-offers" className="bg-[#f5f8fc] py-9 md:py-12">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-6 text-center">
+          <h2 className="text-[1.625rem] font-bold tracking-tight text-slate-950">Special Offers</h2>
+          <p className="mx-auto mt-2 max-w-3xl text-sm leading-6 text-slate-600">
             Featured discounts and promotional component offers
           </p>
         </div>
 
-        <div className="mx-auto flex max-w-[1120px] flex-wrap justify-center gap-3">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 justify-items-center gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
           {discounts.map((item) => (
-            <article key={item.id} className="group w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md sm:w-[calc(50%-0.375rem)] lg:w-[calc(33.333%-0.5rem)] xl:w-[174px]">
+            <Link href={`/special-offers/${encodeURIComponent(item.id)}`} key={item.id} className="group block w-full max-w-[226px]">
+            <article className="w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md">
               <div className="relative aspect-square overflow-hidden bg-slate-950">
                 <img src={item.image_url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
-                <div className="absolute right-[-38px] top-5 w-32 rotate-45 bg-yellow-400 py-1 text-center text-[11px] font-black uppercase tracking-wide text-slate-950 shadow-md">
+                <div className="absolute right-[-42px] top-7 w-[9.5rem] rotate-45 bg-yellow-400 py-1.5 text-center text-xs font-black uppercase tracking-wide text-slate-950 shadow-md">
                   {item.discount_text}
                 </div>
               </div>
-              <div className="p-3">
-                {item.company_name && <p className="mb-1 line-clamp-1 text-[11px] font-semibold uppercase tracking-wide text-blue-600">{item.company_name}</p>}
-                <h3 className="line-clamp-1 text-sm font-bold text-slate-950">{item.title}</h3>
-                {item.subtitle && <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-600">{item.subtitle}</p>}
+              <div className="p-4">
+                {item.company_name && <p className="mb-1.5 line-clamp-1 text-xs font-semibold uppercase tracking-wide text-blue-600">{item.company_name}</p>}
+                <h3 className="line-clamp-1 text-lg font-bold text-slate-950">{item.title}</h3>
+                {item.subtitle && <p className="mt-1.5 line-clamp-2 text-sm leading-6 text-slate-600">{item.subtitle}</p>}
               </div>
-            </article>
+            </article></Link>
           ))}
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <Link href="/special-offers" className="inline-flex rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700">
+            All special offer now
+          </Link>
         </div>
       </div>
     </section>

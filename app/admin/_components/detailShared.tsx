@@ -1,5 +1,10 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
+import { adminButtonClassName } from '../../components/admin/adminButtonStyles';
+import { createClient } from '../../../lib/supabase/client';
 
 export type GenericRow = Record<string, unknown>;
 
@@ -49,7 +54,7 @@ export const formatMoney = (amount: unknown, currency: unknown) => {
 };
 
 export function AdminShell({ children }: { children: ReactNode }) {
-  return <main className="min-h-screen bg-slate-100 text-slate-950">{children}</main>;
+  return <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-slate-950">{children}</main>;
 }
 
 export function AdminHeader({
@@ -57,12 +62,32 @@ export function AdminHeader({
   title,
   subtitle,
   status,
+  action,
 }: {
   eyebrow: string;
   title: string;
   subtitle?: string;
   status?: string | null;
+  action?: ReactNode;
 }) {
+  const supabase = useMemo(() => createClient(), []);
+  const [userEmail, setUserEmail] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    const loadUserEmail = async () => {
+      const { data } = await supabase.auth.getUser();
+      if (active) setUserEmail(data.user?.email || '');
+    };
+
+    loadUserEmail();
+
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
+
   return (
     <section className="bg-[#07152f] px-4 py-8 text-white sm:px-6 lg:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -70,11 +95,20 @@ export function AdminHeader({
           <p className="text-sm font-semibold uppercase tracking-wide text-blue-200">{eyebrow}</p>
           <h1 className="mt-2 text-3xl font-bold">{title}</h1>
           {subtitle && <p className="mt-2 text-blue-100">{subtitle}</p>}
-          {status && <p className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm font-semibold text-white">{humanize(status)}</p>}
+          {status && <p className="mt-3 inline-flex rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white">{humanize(status)}</p>}
         </div>
-        <Link href="/admin" className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-500">
-          Back to Admin
-        </Link>
+        <div className="flex flex-wrap items-center justify-start gap-3 md:justify-end">
+          {userEmail && (
+            <p className="max-w-[220px] truncate text-sm font-medium text-white" title={userEmail}>
+              {userEmail}
+            </p>
+          )}
+          {action ?? (
+            <Link href="/admin" className={adminButtonClassName('md', 'h-10')}>
+              Back to Admin
+            </Link>
+          )}
+        </div>
       </div>
     </section>
   );
@@ -158,7 +192,7 @@ export function FileLink({ row }: { row: GenericRow }) {
   if (href) {
     return (
       <div className="flex flex-col items-start gap-1">
-        <a href={href} target="_blank" rel="noreferrer" className="inline-flex rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">
+        <a href={href} target="_blank" rel="noreferrer" className={adminButtonClassName('sm')}>
           {actionText}
         </a>
         <span className="max-w-48 truncate text-xs text-slate-500">{label}</span>

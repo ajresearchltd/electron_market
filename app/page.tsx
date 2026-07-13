@@ -22,19 +22,19 @@ export const metadata = {
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#f5f8fc] text-slate-950">
+    <main className="public-homepage-scope min-h-screen bg-[#f5f8fc] text-slate-950">
       <Header />
       <HeroSection />
       <CategoriesSection />
       <MarketingDiscountsSection />
       <HowItWorksSection />
+      <IndustrySolutionsSection />
       <TopSuppliersSection />
       <RecentRFQSection />
       <WhyBuyersSection />
       <SuppliersNetworkSection />
       <OfficialSuppliersSection />
       <ProcessSection />
-      <IndustrySolutionsSection />
       <NumbersSection />
       <CustomerReviewsSection />
       <BottomCTASection />

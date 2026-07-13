@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
+import HubButton from '../../components/ui/HubButton';
 
 type HomepageContentRow = {
   homepage_content_id: string;
@@ -310,14 +311,7 @@ export default function AdminHowItWorksPage() {
                 {recordId ? `homepage_content_id: ${recordId}` : 'No homepage_content row loaded.'}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={loadContent}
-              disabled={loading || saving}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Refresh
-            </button>
+            <HubButton onClick={loadContent} disabled={saving} loading={loading} loadingText="Refreshing...">Refresh</HubButton>
           </div>
 
           {loading ? (
@@ -355,13 +349,7 @@ export default function AdminHowItWorksPage() {
               ))}
 
               <div className="md:col-span-2">
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {saving ? 'Saving...' : 'Save How it works'}
-                </button>
+                <HubButton type="submit" loading={saving} loadingText="Saving...">Save How it works</HubButton>
               </div>
             </form>
           )}

@@ -17,7 +17,6 @@ const selectFields = 'section_1_country, section_1_language, section_1_name, sec
 
 export default function Header() {
   const [open, setOpen] = useState(false);
-  const [brandName, setBrandName] = useState('ElectroMarket');
   const [language, setLanguage] = useState('EN');
   const [navItems, setNavItems] = useState(fallbackNavItems);
 
@@ -27,7 +26,6 @@ export default function Header() {
       const row = await loadHomepageContent(selectFields);
       if (!active || !row) return;
 
-      setBrandName(row.section_1_name || 'ElectroMarket');
       setLanguage(row.section_1_language ? row.section_1_language.slice(0, 2).toUpperCase() : 'EN');
       setNavItems(fallbackNavItems.map((item, index) => ({
         label: row[`section_1_menu_${index + 1}`] || item.label,
@@ -44,7 +42,10 @@ export default function Header() {
       <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-white">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-300/40 bg-blue-600/20 text-cyan-300">E</span>
-          <span className="leading-none">{brandName}<span className="block text-[10px] font-semibold text-blue-200">Global Components Marketplace</span></span>
+          <span className="leading-none">
+            <span>Electron</span><span className="text-cyan-300">Market</span>
+            <span className="block text-[10px] font-semibold text-blue-200">Global Components Marketplace</span>
+          </span>
         </Link>
 
         <nav className="hidden items-center gap-8 lg:flex" aria-label="Main navigation">
@@ -56,14 +57,14 @@ export default function Header() {
         </nav>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <button type="button" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-3 text-xs font-medium text-blue-50 hover:bg-white/10">
+          <button type="button" className="public-header-control inline-flex h-8 items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-3 text-xs font-medium text-blue-50 hover:bg-white/10">
             {language}
             <ChevronDown size={14} aria-hidden="true" />
           </button>
-          <Link href="/login" className="inline-flex h-8 items-center rounded-md border border-white/15 px-3 text-xs font-medium text-blue-100 hover:bg-white/10 hover:text-white">
+          <Link href="/login" className="public-header-control inline-flex h-8 items-center rounded-md border border-white/15 px-3 text-xs font-medium text-blue-100 hover:bg-white/10 hover:text-white">
             Log in
           </Link>
-          <Link href="/register/customer" className="inline-flex h-8 items-center rounded-md bg-[#2f80ff] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#4d95ff]">
+          <Link href="/register/customer" className="public-header-control inline-flex h-8 items-center rounded-md bg-[#2f80ff] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#4d95ff]">
             Sign up
           </Link>
         </div>
@@ -71,8 +72,8 @@ export default function Header() {
         <button
           type="button"
           onClick={() => setOpen((value) => !value)}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/15 text-white hover:bg-white/10 lg:hidden"
-          aria-label="Toggle navigation menu"
+          className="public-menu-trigger inline-flex h-10 w-10 items-center justify-center rounded-md border border-white/15 text-white hover:bg-white/10 lg:hidden"
+          aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
           aria-expanded={open}
         >
           {open ? <X size={22} /> : <Menu size={22} />}
@@ -88,10 +89,10 @@ export default function Header() {
               </a>
             ))}
             <div className="grid grid-cols-2 gap-3 pt-2">
-              <Link href="/login" className="rounded-md border border-white/20 px-4 py-2.5 text-center text-sm font-semibold text-blue-50 hover:bg-white/10">
+              <Link href="/login" className="site-button rounded-md border border-white/20 px-4 py-2.5 text-center text-sm font-semibold text-blue-50 hover:bg-white/10">
                 Log in
               </Link>
-              <Link href="/register/customer" className="rounded-md bg-[#2f80ff] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#4d95ff]">
+              <Link href="/register/customer" className="site-button rounded-md bg-[#2f80ff] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#4d95ff]">
                 Sign up
               </Link>
             </div>

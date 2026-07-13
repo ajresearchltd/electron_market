@@ -2,16 +2,19 @@
 
 import Link from 'next/link';
 import { MouseEvent, ReactNode, useEffect, useMemo, useState } from 'react';
+import { createProcurementCaseFromRfq } from '../../lib/procurement-documents/document-chain';
 import { createClient } from '../../lib/supabase/client';
+import HubButton from '../components/ui/HubButton';
 
 type StageKey =
-  | 'rfq_received'
-  | 'quote_sent'
-  | 'approved_rejected'
-  | 'buyer_paid'
+  | 'bom_received'
+  | 'rfq'
+  | 'quote_received'
+  | 'approved'
+  | 'payment'
   | 'goods_shipped'
-  | 'goods_received_by_buyer'
-  | 'funds_sent_to_supplier';
+  | 'goods_received'
+  | 'order_completed';
 
 type RfqRow = {
   rfq_id: string;
@@ -145,6 +148,27 @@ type CustomerCompanyProfileRow = {
   updated_at?: string | null;
 };
 
+type ProcurementProgressRow = {
+  id: string;
+  progress_number: number | null;
+  procurement_chain_id?: string | null;
+  procurement_case_id?: string | null;
+  procurement_number?: string | null;
+  customer_reference?: string | null;
+  customer_company_name: string | null;
+  supplier_company_name: string | null;
+  document_name: string | null;
+  current_stage: string | null;
+  current_stage_label: string | null;
+  payment_amount: number | null;
+  payment_currency: string | null;
+  payment_reference: string | null;
+  shipment_carrier: string | null;
+  shipment_tracking_number: string | null;
+  updated_at: string | null;
+  created_at: string | null;
+};
+
 type RfqItemFormRow = {
   categoryName: string;
   partNumber: string;
@@ -229,26 +253,55 @@ type AdminHeaderProfile = {
   avatarUrl: string;
 };
 
+type AiChatSessionRow = {
+  id: string;
+  chat_number: number | null;
+  user_id: string | null;
+  guest_session_id: string | null;
+  title: string | null;
+  chat_type: string | null;
+  status: string | null;
+  first_response_id: string | null;
+  latest_response_id: string | null;
+  message_count: number | null;
+  last_message_at: string | null;
+  created_at: string | null;
+};
+
+type AiChatMessageRow = {
+  id: string;
+  chat_session_id: string;
+  message_order: number | null;
+  role: string | null;
+  content: string | null;
+  openai_response_id: string | null;
+  created_at: string | null;
+  status: string | null;
+  error_message: string | null;
+};
+
 const ASSIGNMENTS_TABLE = 'rfq_supplier_assignments';
 
 const stageOrder: StageKey[] = [
-  'rfq_received',
-  'quote_sent',
-  'approved_rejected',
-  'buyer_paid',
+  'bom_received',
+  'rfq',
+  'quote_received',
+  'approved',
+  'payment',
   'goods_shipped',
-  'goods_received_by_buyer',
-  'funds_sent_to_supplier',
+  'goods_received',
+  'order_completed',
 ];
 
 const stageMeta: Record<StageKey, { label: string; bgClass: string; textClass: string }> = {
-  rfq_received: { label: 'RFQ Received', bgClass: 'bg-blue-500', textClass: 'text-white' },
-  quote_sent: { label: 'Quote Sent', bgClass: 'bg-emerald-500', textClass: 'text-white' },
-  approved_rejected: { label: 'Approved / Rejected', bgClass: 'bg-orange-500', textClass: 'text-white' },
-  buyer_paid: { label: 'Buyer Paid', bgClass: 'bg-violet-500', textClass: 'text-white' },
+  bom_received: { label: 'BOM received', bgClass: 'bg-blue-500', textClass: 'text-white' },
+  rfq: { label: 'RFQ', bgClass: 'bg-cyan-500', textClass: 'text-white' },
+  quote_received: { label: 'Quote received', bgClass: 'bg-emerald-500', textClass: 'text-white' },
+  approved: { label: 'Approved', bgClass: 'bg-orange-500', textClass: 'text-white' },
+  payment: { label: 'Payment', bgClass: 'bg-violet-500', textClass: 'text-white' },
   goods_shipped: { label: 'Goods Shipped', bgClass: 'bg-teal-500', textClass: 'text-white' },
-  goods_received_by_buyer: { label: 'Goods Received', bgClass: 'bg-amber-400', textClass: 'text-slate-900' },
-  funds_sent_to_supplier: { label: 'Funds Released', bgClass: 'bg-emerald-700', textClass: 'text-white' },
+  goods_received: { label: 'Goods received', bgClass: 'bg-amber-400', textClass: 'text-slate-900' },
+  order_completed: { label: 'Order completed', bgClass: 'bg-emerald-700', textClass: 'text-white' },
 };
 
 const tableHeaderCellClass = 'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-white';
@@ -259,6 +312,18 @@ const formatDate = (value: string | null | undefined) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '-';
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).format(date);
+};
+
+const formatDateTime = (value: string | null | undefined) => {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}`;
 };
 
 const formatMoney = (amount: number | null | undefined, currency: string | null | undefined) => {
@@ -287,7 +352,15 @@ const getCategoryFromItems = (rfqId: string, itemRows: RfqItemRow[]) => {
 
 const normalizeStage = (value: string | null | undefined): StageKey => {
   if (value && stageOrder.includes(value as StageKey)) return value as StageKey;
-  return 'rfq_received';
+  const normalized = String(value || '').toLowerCase();
+  if (normalized.includes('completed') || normalized.includes('funds_sent')) return 'order_completed';
+  if (normalized.includes('received')) return 'goods_received';
+  if (normalized.includes('shipped')) return 'goods_shipped';
+  if (normalized.includes('paid') || normalized.includes('payment')) return 'payment';
+  if (normalized.includes('approved')) return 'approved';
+  if (normalized.includes('quote')) return 'quote_received';
+  if (normalized.includes('rfq')) return 'rfq';
+  return 'bom_received';
 };
 
 const inputClass = 'mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
@@ -405,8 +478,8 @@ function StageProgress({ currentStage }: { currentStage: StageKey }) {
 
 function Modal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 px-4 py-6 backdrop-blur-sm">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl border border-blue-100 bg-white text-slate-900 shadow-2xl">
         <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-6 py-4">
           <h2 className="text-2xl font-bold text-slate-950">{title}</h2>
           <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
@@ -416,6 +489,193 @@ function Modal({ title, children, onClose }: { title: string; children: ReactNod
         <div className="max-h-[calc(90vh-74px)] overflow-y-auto px-6 py-5">{children}</div>
       </div>
     </div>
+  );
+}
+
+function AiConversationsModal({ supabase, onClose }: { supabase: ReturnType<typeof createClient>; onClose: () => void }) {
+  const [sessions, setSessions] = useState<AiChatSessionRow[]>([]);
+  const [selectedSession, setSelectedSession] = useState<AiChatSessionRow | null>(null);
+  const [messages, setMessages] = useState<AiChatMessageRow[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [sessionError, setSessionError] = useState('');
+  const [messageError, setMessageError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    const loadSessions = async () => {
+      setLoadingSessions(true);
+      setSessionError('');
+
+      const { data, error } = await supabase
+        .from('ai_chat_sessions')
+        .select('id, chat_number, user_id, guest_session_id, title, chat_type, status, first_response_id, latest_response_id, message_count, last_message_at, created_at')
+        .order('chat_number', { ascending: false });
+
+      if (!active) return;
+
+      if (error) {
+        setSessions([]);
+        setSessionError(error.message);
+      } else {
+        setSessions((data ?? []) as AiChatSessionRow[]);
+      }
+
+      setLoadingSessions(false);
+    };
+
+    loadSessions();
+
+    return () => {
+      active = false;
+    };
+  }, [supabase]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadMessages = async () => {
+      if (!selectedSession) {
+        setMessages([]);
+        setMessageError('');
+        setLoadingMessages(false);
+        return;
+      }
+
+      setLoadingMessages(true);
+      setMessageError('');
+
+      const { data, error } = await supabase
+        .from('ai_chat_messages')
+        .select('id, chat_session_id, message_order, role, content, openai_response_id, created_at, status, error_message')
+        .eq('chat_session_id', selectedSession.id)
+        .order('message_order', { ascending: false });
+
+      if (!active) return;
+
+      if (error) {
+        setMessages([]);
+        setMessageError(error.message);
+      } else {
+        setMessages((data ?? []) as AiChatMessageRow[]);
+      }
+
+      setLoadingMessages(false);
+    };
+
+    loadMessages();
+
+    return () => {
+      active = false;
+    };
+  }, [selectedSession, supabase]);
+
+  if (selectedSession) {
+    return (
+      <Modal title={`AI Conversation #${selectedSession.chat_number ?? '-'}`} onClose={onClose}>
+        <div className="space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button type="button" onClick={() => setSelectedSession(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+              Back to conversations
+            </button>
+          </div>
+
+          <SectionCard title="Conversation Detail" tone="blue">
+            <div className="grid gap-3 text-sm text-slate-700 md:grid-cols-2">
+              <p><span className="font-semibold text-slate-950">Chat number:</span> {selectedSession.chat_number ?? '-'}</p>
+              <p><span className="font-semibold text-slate-950">Conversation id:</span> {selectedSession.id}</p>
+              <p><span className="font-semibold text-slate-950">Type:</span> {selectedSession.chat_type || '-'}</p>
+              <p><span className="font-semibold text-slate-950">Status:</span> {humanize(selectedSession.status)}</p>
+              <p><span className="font-semibold text-slate-950">Latest response id:</span> {selectedSession.latest_response_id || '-'}</p>
+              <p><span className="font-semibold text-slate-950">Messages:</span> {selectedSession.message_count ?? 0}</p>
+            </div>
+          </SectionCard>
+
+          {messageError && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">AI messages: {messageError}</div>}
+          {loadingMessages && <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">Loading conversation messages...</div>}
+          {!loadingMessages && !messageError && messages.length === 0 && <div className="rounded-xl border border-slate-200 bg-white px-4 py-5 text-sm text-slate-600">No messages found for this conversation.</div>}
+
+          <div className="space-y-3">
+            {messages.map((item) => {
+              const isUser = item.role === 'user';
+              const isError = item.status === 'error';
+              return (
+                <div key={item.id} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
+                  <article
+                    className={`w-fit max-w-[85%] rounded-2xl p-4 text-sm leading-6 sm:max-w-[60%] ${isError ? 'border border-red-200 bg-red-50 text-red-700' : isUser ? 'border border-blue-100 bg-blue-50 text-slate-900' : 'border border-purple-700 bg-purple-800 text-white'}`}
+                  >
+                    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-semibold">
+                      <span className={isError ? 'text-red-700' : isUser ? 'text-blue-700' : 'text-purple-100'}>{isUser ? 'Client / User' : 'AI Assistant'}</span>
+                      <span className={isError ? 'text-red-600' : isUser ? 'text-slate-500' : 'text-purple-100'}>order {item.message_order ?? '-'}</span>
+                    </div>
+                    <div className="whitespace-pre-wrap">{isError ? item.error_message || item.content : item.content}</div>
+                    <p className={`mt-2 text-xs ${isError ? 'text-red-600' : isUser ? 'text-slate-500' : 'text-purple-100'}`}>{formatDateTime(item.created_at)}</p>
+                    {item.openai_response_id && <p className={`mt-2 break-all text-xs ${isUser ? 'text-slate-500' : 'text-purple-100'}`}>openai_response_id: {item.openai_response_id}</p>}
+                  </article>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal title="AI Conversations List" onClose={onClose}>
+      <div className="space-y-4">
+        {sessionError && <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">AI conversations: {sessionError}</div>}
+        {loadingSessions && <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">Loading AI conversations...</div>}
+        {!loadingSessions && !sessionError && sessions.length === 0 && <div className="rounded-xl border border-slate-200 bg-white px-4 py-5 text-sm text-slate-600">No AI conversations found.</div>}
+
+        {sessions.length > 0 && (
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="min-w-[1360px] table-fixed text-left text-sm">
+              <colgroup>
+                <col className="w-20" />
+                <col className="w-52" />
+                <col className="w-36" />
+                <col className="w-36" />
+                <col className="w-64" />
+                <col className="w-72" />
+                <col className="w-24" />
+                <col className="w-36" />
+                <col className="w-36" />
+                <col className="w-44" />
+              </colgroup>
+              <thead className="bg-blue-600 text-white">
+                <tr>
+                  {['Chat', 'Title', 'Type', 'Status', 'User / Customer', 'Response ID', 'Messages', 'Last Message', 'Created', 'Action'].map((heading) => (
+                    <th key={heading} className={`${tableHeaderCellClass} overflow-hidden text-ellipsis whitespace-nowrap`}>{heading}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {sessions.map((session) => (
+                  <tr key={session.id} onClick={() => setSelectedSession(session)} className="h-12 cursor-pointer hover:bg-blue-50">
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3 font-semibold text-slate-950" title={`#${session.chat_number ?? '-'}`}>#{session.chat_number ?? '-'}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3" title={session.title || ''}>{session.title || '-'}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3" title={session.chat_type || ''}>{session.chat_type || '-'}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3" title={humanize(session.status)}>{humanize(session.status)}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3" title={session.user_id || session.guest_session_id || ''}>{session.user_id || session.guest_session_id || '-'}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3" title={session.latest_response_id || session.first_response_id || ''}>{session.latest_response_id || session.first_response_id || '-'}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3" title={`${session.message_count ?? 0}`}>{session.message_count ?? 0}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3" title={session.last_message_at || ''}>{formatDate(session.last_message_at)}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3" title={session.created_at || ''}>{formatDate(session.created_at)}</td>
+                    <td className="overflow-hidden text-ellipsis whitespace-nowrap px-4 py-3">
+                      <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedSession(session); }} className="font-semibold text-blue-700 hover:text-blue-800">
+                        View conversation
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -636,6 +896,58 @@ function CreateRfqModal({
       return;
     }
 
+    const procurementCase = await createProcurementCaseFromRfq(supabase, {
+      rfq_id: rfqData.rfq_id,
+      order_number: orderNumber,
+      customer_id: formData.selectedCustomerUserId,
+      customer_company_name: formData.buyerCompanyName.trim(),
+    });
+
+    const now = new Date().toISOString();
+    const progressPayload: Record<string, any> = {
+      customer_user_id: formData.selectedCustomerUserId,
+      admin_user_id: null,
+      rfq_id: rfqData.rfq_id,
+      procurement_chain_id: procurementCase.data?.procurement_chain_id || procurementCase.data?.id || null,
+      procurement_case_id: procurementCase.data?.id || null,
+      procurement_number: procurementCase.data?.procurement_number || null,
+      customer_reference: orderNumber,
+      document_name: orderNumber,
+      customer_company_name: formData.buyerCompanyName.trim(),
+      current_stage: 'rfq',
+      current_stage_label: 'RFQ',
+      status_note: 'RFQ created / sent',
+      rfq_sent_at: now,
+      metadata: { source: 'admin_create_rfq' },
+    };
+    let progressResult = await supabase
+      .from('procurement_progress')
+      .insert(progressPayload)
+      .select('id')
+      .single();
+    if (progressResult.error && String(progressResult.error.message || '').toLowerCase().includes('procurement_')) {
+      delete progressPayload.procurement_chain_id;
+      delete progressPayload.procurement_case_id;
+      delete progressPayload.procurement_number;
+      delete progressPayload.customer_reference;
+      progressResult = await supabase
+        .from('procurement_progress')
+        .insert(progressPayload)
+        .select('id')
+        .single();
+    }
+    if (progressResult.data?.id) {
+      await supabase.from('procurement_progress_events').insert({
+        progress_id: progressResult.data.id,
+        actor_user_id: null,
+        actor_role: 'admin',
+        stage_code: 'rfq',
+        stage_label: 'RFQ',
+        event_note: 'RFQ created / sent',
+        event_data: { rfq_id: rfqData.rfq_id, order_number: orderNumber },
+      });
+    }
+
     await onSaved();
     setSaving(false);
     onClose();
@@ -696,7 +1008,7 @@ function CreateRfqModal({
         <SectionCard
           title="Item Rows"
           tone="blue"
-          action={<button type="button" onClick={() => setItemRows((current) => [...current, createEmptyRfqItem()])} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Add item row</button>}
+          action={<button type="button" onClick={() => setItemRows((current) => [...current, createEmptyRfqItem()])} className="admin-primary-button admin-primary-button-compact">Add item row</button>}
         >
           <div className="space-y-4">
             {itemRows.map((item, index) => (
@@ -723,8 +1035,8 @@ function CreateRfqModal({
           </div>
         </SectionCard>
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-          <button type="button" onClick={saveRfq} disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300">{saving ? 'Saving...' : 'Save RFQ'}</button>
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+          <HubButton onClick={saveRfq} loading={saving} loadingText="Saving...">Save RFQ</HubButton>
         </div>
       </div>
     </Modal>
@@ -929,8 +1241,8 @@ function CreateSupplierModal({
           </div>
         </SectionCard>
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-          <button type="button" onClick={saveSupplier} disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300">{saving ? 'Saving...' : 'Save Supplier'}</button>
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+          <HubButton onClick={saveSupplier} loading={saving} loadingText="Saving...">Save Supplier</HubButton>
         </div>
       </div>
     </Modal>
@@ -1172,8 +1484,8 @@ function CreateCustomerModal({
           </div>
         </SectionCard>
         <div className="flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-          <button type="button" onClick={saveCustomer} disabled={saving} className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300">{saving ? 'Saving...' : 'Save Customer'}</button>
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+          <HubButton onClick={saveCustomer} loading={saving} loadingText="Saving...">Save Customer</HubButton>
         </div>
       </div>
     </Modal>
@@ -1207,6 +1519,7 @@ export default function AdminControlCenterPage() {
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [contacts, setContacts] = useState<ContactRow[]>([]);
   const [documents, setDocuments] = useState<DocumentRow[]>([]);
+  const [progressRows, setProgressRows] = useState<ProcurementProgressRow[]>([]);
   const [selectedRfq, setSelectedRfq] = useState<RfqRow | null>(null);
   const [selectedSupplier, setSelectedSupplier] = useState<SupplierProfileRow | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<UserProfileRow | null>(null);
@@ -1225,6 +1538,7 @@ export default function AdminControlCenterPage() {
   const [showCreateRfq, setShowCreateRfq] = useState(false);
   const [showCreateSupplier, setShowCreateSupplier] = useState(false);
   const [showCreateCustomer, setShowCreateCustomer] = useState(false);
+  const [showAiConversations, setShowAiConversations] = useState(false);
   const [assigningRfq, setAssigningRfq] = useState<RfqRow | null>(null);
   const [selectedSupplierIds, setSelectedSupplierIds] = useState<string[]>([]);
   const [adminNotes, setAdminNotes] = useState('');
@@ -1320,6 +1634,14 @@ export default function AdminControlCenterPage() {
     setQuotes((quotesResult.data ?? []) as QuoteRow[]);
     setContacts((contactsResult.data ?? []) as ContactRow[]);
     setDocuments((documentsResult.data ?? []) as DocumentRow[]);
+    const progressResponse = await fetch('/api/progress/admin');
+    const progressResult = await progressResponse.json().catch(() => ({}));
+    if (progressResponse.ok) {
+      setProgressRows((progressResult.progress ?? []) as ProcurementProgressRow[]);
+    } else {
+      setProgressRows([]);
+      addError('Procurement Progress', progressResult.error || 'Unable to load procurement progress.');
+    }
     setLoading(false);
   };
 
@@ -1371,9 +1693,9 @@ export default function AdminControlCenterPage() {
     const activeOrder = activeOrdersByOrder.get(rfq.order_number);
     if (activeOrder?.current_stage) return normalizeStage(activeOrder.current_stage);
     const relatedQuotes = quotesByOrder.get(rfq.order_number) ?? [];
-    if (relatedQuotes.some((quote) => ['approved', 'rejected'].includes(quote.quote_status || ''))) return 'approved_rejected';
-    if (relatedQuotes.some((quote) => ['sent', 'viewed'].includes(quote.quote_status || ''))) return 'quote_sent';
-    return 'rfq_received';
+    if (relatedQuotes.some((quote) => ['approved', 'rejected'].includes(quote.quote_status || ''))) return 'approved';
+    if (relatedQuotes.some((quote) => ['sent', 'viewed'].includes(quote.quote_status || ''))) return 'quote_received';
+    return 'rfq';
   };
 
   const openAssignModal = (event: MouseEvent<HTMLButtonElement>, rfq: RfqRow) => {
@@ -1392,6 +1714,36 @@ export default function AdminControlCenterPage() {
       return;
     }
     window.location.assign('/login');
+  };
+
+  const advanceAdminProgress = async (progress: ProcurementProgressRow, nextStage: StageKey) => {
+    const body: Record<string, unknown> = { next_stage: nextStage };
+    if (nextStage === 'payment') {
+      body.payment_amount = window.prompt('Payment amount', String(progress.payment_amount || '')) || '';
+      body.payment_currency = window.prompt('Payment currency', progress.payment_currency || 'USD') || 'USD';
+      body.payment_reference = window.prompt('Payment reference', progress.payment_reference || '') || '';
+      body.note = 'Payment information entered by admin';
+    } else if (nextStage === 'goods_shipped') {
+      body.shipment_carrier = window.prompt('Shipment carrier', progress.shipment_carrier || '') || '';
+      body.shipment_tracking_number = window.prompt('Tracking number', progress.shipment_tracking_number || '') || '';
+      body.shipment_tracking_url = window.prompt('Tracking URL', '') || '';
+      body.note = 'Goods shipped information entered by admin';
+    } else if (nextStage === 'order_completed') {
+      body.note = 'Order completed by admin';
+    }
+
+    const response = await fetch(`/api/progress/${progress.id}/advance`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      setErrors((current) => [...current, `Procurement Progress: ${result.error || 'Unable to update progress.'}`]);
+      return;
+    }
+    setMessage(`Progress updated to ${stageMeta[nextStage].label}.`);
+    await loadDashboard();
   };
 
   const assignSelectedSuppliers = async () => {
@@ -1419,6 +1771,19 @@ export default function AdminControlCenterPage() {
       setSavingAssignment(false);
       return;
     }
+
+    const firstSupplier = suppliers.find((row) => row.user_id === selectedSupplierIds[0]);
+    await supabase
+      .from('procurement_progress')
+      .update({
+        supplier_user_id: selectedSupplierIds[0] || null,
+        supplier_company_name: firstSupplier?.company_name || null,
+        current_stage: 'rfq',
+        current_stage_label: 'RFQ',
+        rfq_sent_at: new Date().toISOString(),
+        status_note: 'RFQ assigned to supplier',
+      })
+      .eq('rfq_id', assigningRfq.rfq_id);
 
     setMessage('RFQ assigned successfully.');
     setAssigningRfq(null);
@@ -1588,7 +1953,7 @@ export default function AdminControlCenterPage() {
   const avatarInitials = getInitials(adminHeaderProfile.name || adminHeaderProfile.email);
 
   return (
-    <main className="min-h-screen bg-slate-100 text-slate-900">
+    <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-slate-900">
       <header className="bg-[#071b3a] px-4 py-4 text-white shadow-md sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -1597,6 +1962,11 @@ export default function AdminControlCenterPage() {
             <p className="mt-1 max-w-2xl text-sm text-blue-100">Review RFQs, suppliers, customers, and manually assign buyer RFQs to suppliers.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            {adminHeaderProfile.email && (
+              <p className="max-w-[220px] truncate text-sm font-medium text-white" title={adminHeaderProfile.email}>
+                {adminHeaderProfile.email}
+              </p>
+            )}
             {adminHeaderProfile.avatarUrl ? (
               <img src={adminHeaderProfile.avatarUrl} alt="" className="h-12 w-12 rounded-full border border-white/30 object-cover" />
             ) : (
@@ -1607,8 +1977,8 @@ export default function AdminControlCenterPage() {
               <p className="max-w-48 truncate text-xs text-blue-100">{adminHeaderProfile.companyName}</p>
               {headerError && <p className="max-w-64 text-xs text-amber-200">{headerError}</p>}
             </div>
-            <Link href="/" className="rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold text-white hover:bg-white/10">Home</Link>
-            <button type="button" onClick={signOutAdmin} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500">Sign out</button>
+            <Link href="/" className="admin-primary-button admin-primary-button-compact">Home</Link>
+            <button type="button" onClick={signOutAdmin} className="admin-primary-button admin-primary-button-compact">Sign out</button>
           </div>
         </div>
       </header>
@@ -1631,9 +2001,76 @@ export default function AdminControlCenterPage() {
           ))}
         </section>
 
+        <SectionCard title="Procurement Progress">
+          <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-blue-600 text-white">
+                <tr>
+                  {['Progress No', 'Customer', 'Supplier', 'System Procurement Number', 'Customer Reference', 'Current Stage', 'Progress', 'Updated', 'Action'].map((heading) => (
+                    <th key={heading} className={tableHeaderCellClass}>{heading}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {progressRows.length === 0 ? (
+                  <tr><td colSpan={9} className={emptyCellClass}>No procurement progress records yet.</td></tr>
+                ) : (
+                  progressRows.map((progress) => {
+                    const stage = normalizeStage(progress.current_stage);
+                    const chainId = String(progress.procurement_chain_id ?? '').trim();
+                    const procurementNumber = String(progress.procurement_number ?? '').trim();
+                    const customerReference = String(progress.customer_reference ?? progress.document_name ?? '').trim();
+                    const detailsHref = chainId ? `/admin/procurement-progress/${encodeURIComponent(chainId)}` : null;
+                    return (
+                      <tr key={progress.id} className="hover:bg-blue-50">
+                        <td className="px-4 py-3 font-semibold text-slate-950">#{progress.progress_number ?? '-'}</td>
+                        <td className="px-4 py-3">{progress.customer_company_name || '-'}</td>
+                        <td className="px-4 py-3">{progress.supplier_company_name || '-'}</td>
+                        <td className="px-4 py-3 font-semibold text-slate-950">{procurementNumber || '-'}</td>
+                        <td className="px-4 py-3">{customerReference || '-'}</td>
+                        <td className="px-4 py-3">{stageMeta[stage].label}</td>
+                        <td className="px-4 py-3"><StageProgress currentStage={stage} /></td>
+                        <td className="px-4 py-3">{formatDateTime(progress.updated_at || progress.created_at)}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            {progress.current_stage === 'approved' && (
+                              <button type="button" onClick={() => advanceAdminProgress(progress, 'payment')} className="admin-primary-button admin-primary-button-compact">Create Invoice / Mark Payment</button>
+                            )}
+                            {progress.current_stage === 'payment' && (
+                              <button type="button" onClick={() => advanceAdminProgress(progress, 'goods_shipped')} className="admin-primary-button admin-primary-button-compact">Create Waybill / Mark Goods Shipped</button>
+                            )}
+                            {progress.current_stage === 'goods_received' && (
+                              <button type="button" onClick={() => advanceAdminProgress(progress, 'order_completed')} className="admin-primary-button admin-primary-button-compact">Complete Order</button>
+                            )}
+                            {detailsHref ? (
+                              <Link
+                                href={detailsHref}
+                                data-procurement-chain-id={chainId}
+                                data-procurement-number={procurementNumber}
+                                data-details-href={detailsHref}
+                                className="inline-flex cursor-pointer items-center justify-center rounded-md bg-blue-600 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-blue-700 hover:text-white"
+                              >
+                                View Progress Details
+                              </Link>
+                            ) : (
+                              <span className="inline-flex cursor-not-allowed items-center justify-center rounded-md bg-gray-300 px-4 py-3 text-center text-sm font-semibold text-gray-600">
+                                Chain id unavailable
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+
         <SectionCard
           title="Latest RFQs"
-          action={<button type="button" onClick={() => setShowCreateRfq(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Add RFQ</button>}
+          action={<button type="button" onClick={() => setShowCreateRfq(true)} className="admin-primary-button admin-primary-button-compact">Add RFQ</button>}
         >
           <div className="overflow-x-auto rounded-xl border border-slate-200">
             <table className="min-w-full text-left text-sm">
@@ -1680,7 +2117,7 @@ export default function AdminControlCenterPage() {
         <div className="grid gap-6 xl:grid-cols-2">
           <SectionCard
             title="Latest Suppliers"
-            action={<button type="button" onClick={() => setShowCreateSupplier(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Add Supplier</button>}
+            action={<button type="button" onClick={() => setShowCreateSupplier(true)} className="admin-primary-button admin-primary-button-compact">Add Supplier</button>}
           >
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="min-w-full text-left text-sm">
@@ -1714,7 +2151,7 @@ export default function AdminControlCenterPage() {
 
           <SectionCard
             title="Latest Customers"
-            action={<button type="button" onClick={() => setShowCreateCustomer(true)} className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">Add Customer</button>}
+            action={<button type="button" onClick={() => setShowCreateCustomer(true)} className="admin-primary-button admin-primary-button-compact">Add Customer</button>}
           >
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="min-w-full text-left text-sm">
@@ -1752,7 +2189,7 @@ export default function AdminControlCenterPage() {
             <p className="mt-2 text-sm text-slate-600">Company documents: {documents.filter((doc) => doc.document_status === 'uploaded' || doc.document_status === 'in_review').length}</p>
             <p className="mt-2 text-sm text-slate-600">Tax/company documents pending review: {documents.filter((doc) => doc.document_status === 'in_review').length}</p>
           </SectionCard>
-          <SectionCard title="Recent Activity">
+          <SectionCard title="Request to vendors">
             {rfqs[0] || assignments[0] || quotes[0] ? (
               <div className="space-y-2 text-sm text-slate-600">
                 {rfqs[0] && <p>New RFQ created: {rfqs[0].order_number}</p>}
@@ -1760,6 +2197,14 @@ export default function AdminControlCenterPage() {
                 {quotes[0] && <p>Quote activity: {quotes[0].order_number}</p>}
               </div>
             ) : <p className="text-sm text-slate-600">No recent activity yet.</p>}
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link href="/admin/octopart-requests" className="admin-primary-button">
+                Octopart
+              </Link>
+              <Link href="/admin/external-vendors" className="admin-primary-button">
+                External Vendors
+              </Link>
+            </div>
           </SectionCard>
           <SectionCard title="Quick Actions">
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -1768,13 +2213,18 @@ export default function AdminControlCenterPage() {
                 { label: 'How It Works', href: '/admin/how-it-works' },
                 { label: 'Categories', href: '/admin/categories' },
                 { label: 'Discount Prices', href: '/admin/discount-prices' },
+                { label: 'AI config', href: '/admin/ai-config' },
+                { label: 'Octopart request', href: '/admin/octopart-requests' },
                 { label: 'Verified Suppliers', href: '/admin/verified-suppliers' },
                 { label: 'Industry Solutions', href: '/admin/industry-solutions' },
               ].map((action) => (
-                <Link key={action.href} href={action.href} className="rounded-lg bg-blue-600 px-3 py-2 text-center text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-300">
+                <Link key={action.href} href={action.href} className="admin-primary-button admin-primary-button-compact text-center">
                   {action.label}
                 </Link>
               ))}
+              <button type="button" onClick={() => setShowAiConversations(true)} className="admin-primary-button admin-primary-button-compact text-center">
+                AI meets
+              </button>
             </div>
           </SectionCard>
           <SectionCard title="Alerts / Attention Needed">
@@ -1815,6 +2265,13 @@ export default function AdminControlCenterPage() {
           supabase={supabase}
           onClose={() => setShowCreateCustomer(false)}
           onSaved={loadDashboard}
+        />
+      )}
+
+      {showAiConversations && (
+        <AiConversationsModal
+          supabase={supabase}
+          onClose={() => setShowAiConversations(false)}
         />
       )}
 
@@ -1871,8 +2328,8 @@ export default function AdminControlCenterPage() {
                 <p>Documents: {documents.filter((doc) => doc.profile_id === selectedSupplier.profile_id).length}</p>
               </div>
               <div className="mt-4 flex gap-2">
-                <button type="button" onClick={() => updateSupplierStatus(selectedSupplier, 'approved')} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white">Approve Supplier</button>
-                <button type="button" onClick={() => updateSupplierStatus(selectedSupplier, 'needs_update')} className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-semibold text-white">Mark Needs Update</button>
+                <button type="button" onClick={() => updateSupplierStatus(selectedSupplier, 'approved')} className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white">Approve Supplier</button>
+                <button type="button" onClick={() => updateSupplierStatus(selectedSupplier, 'needs_update')} className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-white">Mark Needs Update</button>
               </div>
             </SectionCard>
             <SectionCard title="Bank / Payout Details">
@@ -2073,9 +2530,7 @@ export default function AdminControlCenterPage() {
                 <span className="text-sm font-semibold text-slate-700">Admin notes</span>
                 <textarea value={adminNotes} onChange={(event) => setAdminNotes(event.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
               </label>
-              <button type="button" onClick={assignSelectedSuppliers} disabled={savingAssignment || selectedSupplierIds.length === 0} className="mt-4 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300">
-                {savingAssignment ? 'Assigning...' : 'Assign to selected supplier(s)'}
-              </button>
+              <HubButton onClick={assignSelectedSuppliers} disabled={selectedSupplierIds.length === 0} loading={savingAssignment} loadingText="Assigning..." className="mt-4">Assign to selected supplier(s)</HubButton>
             </SectionCard>
           </div>
         </Modal>

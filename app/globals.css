@@ -30,3 +30,232 @@ a {
   transition-property: color, background-color, border-color, box-shadow, transform, opacity;
   transition-duration: 200ms;
 }
+
+@layer components {
+  .admin-primary-button {
+    @apply relative inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white px-4 py-2.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-75;
+    background-color: #454a9c;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.30);
+  }
+
+  .admin-primary-button,
+  .admin-primary-button * {
+    color: #ffffff;
+  }
+
+  .admin-primary-button:hover,
+  .admin-primary-button:hover * {
+    color: #0f172a;
+  }
+
+  .admin-primary-button:hover {
+    background-color: #7dd3fc;
+    border-color: #ffffff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.38);
+    transform: translateY(-1px);
+  }
+
+  .admin-primary-button-small {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .admin-primary-button-compact {
+    @apply px-3 py-2 text-sm;
+  }
+}
+
+/* Shared approved treatment for actionable controls across public pages and HUB layouts. */
+.site-button-scope button:not(.hub-button):not(.admin-primary-button):not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button),
+.site-button-scope a.hub-button,
+.site-button-scope a.admin-primary-button,
+.site-button-scope a.site-button,
+.site-button-scope a[class*="inline-flex"][class*="rounded"],
+.site-button-scope a[class*="inline-block"][class*="rounded"][class*="bg-"],
+.site-button-scope label:has(input[type="file"]) {
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid #ffffff;
+  border-radius: 1rem;
+  background-color: #454a9c;
+  padding: 0.625rem 1rem;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.25rem;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.30);
+  transition: color 200ms, background-color 200ms, border-color 200ms, box-shadow 200ms, opacity 200ms, transform 200ms;
+}
+
+.site-button-scope a.hub-button,
+.site-button-scope a.admin-primary-button,
+.site-button-scope a.site-button,
+.site-button-scope a[class*="inline-flex"][class*="rounded"],
+.site-button-scope a[class*="inline-block"][class*="rounded"][class*="bg-"],
+.site-button-scope label:has(input[type="file"]) {
+  display: inline-flex;
+}
+
+.site-button-scope button:not(.hub-button):not(.admin-primary-button):not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button):hover:not(:disabled),
+.site-button-scope a.hub-button:hover,
+.site-button-scope a.admin-primary-button:hover,
+.site-button-scope a.site-button:hover,
+.site-button-scope a[class*="inline-flex"][class*="rounded"]:hover,
+.site-button-scope a[class*="inline-block"][class*="rounded"][class*="bg-"]:hover,
+.site-button-scope label:has(input[type="file"]):hover {
+  background-color: #7dd3fc;
+  border-color: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.38);
+  transform: translateY(-1px);
+}
+
+.site-button-scope button:not(.hub-button):not(.admin-primary-button):not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button):active:not(:disabled),
+.site-button-scope a.hub-button:active,
+.site-button-scope a.admin-primary-button:active,
+.site-button-scope a.site-button:active,
+.site-button-scope a[class*="inline-flex"][class*="rounded"]:active,
+.site-button-scope a[class*="inline-block"][class*="rounded"][class*="bg-"]:active,
+.site-button-scope label:has(input[type="file"]):active {
+  transform: translateY(0);
+  box-shadow: 0 3px 8px rgba(15, 23, 42, 0.28);
+}
+
+.site-button-scope button:not(.hub-button):not(.admin-primary-button):not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button):focus-visible,
+.site-button-scope a.hub-button:focus-visible,
+.site-button-scope a.admin-primary-button:focus-visible,
+.site-button-scope a.site-button:focus-visible,
+.site-button-scope a[class*="inline-flex"][class*="rounded"]:focus-visible,
+.site-button-scope a[class*="inline-block"][class*="rounded"][class*="bg-"]:focus-visible,
+.site-button-scope label:has(input[type="file"]):focus-within {
+  outline: none;
+  box-shadow: 0 0 0 2px #7dd3fc, 0 0 0 4px #0f172a, 0 6px 16px rgba(15, 23, 42, 0.30);
+}
+
+.site-button-scope button:not(.hub-button):not(.admin-primary-button):not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button):disabled,
+.site-button-scope [aria-disabled="true"].hub-button {
+  cursor: not-allowed;
+  border-color: #ffffff;
+  background-color: #454a9c;
+  color: #ffffff;
+  opacity: 0.75;
+  transform: translateY(0);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.30);
+}
+
+.site-button-scope [aria-disabled="true"].hub-button:hover {
+  border-color: #ffffff;
+  background-color: #454a9c;
+  color: #ffffff;
+  opacity: 0.75;
+  transform: translateY(0);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.30);
+}
+
+.site-button-scope td button:not(.hub-button):not(.admin-primary-button):not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button),
+.site-button-scope td a.hub-button,
+.site-button-scope td a.site-button,
+.site-button-scope td a[class*="inline-flex"][class*="rounded"] {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.site-button-scope .hub-identity-button {
+  padding: 0.375rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 1rem;
+  background-color: rgba(69, 74, 156, 0.28);
+  color: #ffffff;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.24);
+  transition: color 200ms, background-color 200ms, border-color 200ms, box-shadow 200ms, transform 200ms;
+}
+
+.site-button-scope .hub-identity-button:hover {
+  border-color: #ffffff;
+  background-color: #7dd3fc;
+  color: #0f172a;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.34);
+  transform: translateY(-1px);
+}
+
+.site-button-scope .hub-identity-button:hover span {
+  color: #0f172a;
+}
+
+.site-button-scope .hub-identity-button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #7dd3fc, 0 0 0 4px #0f172a, 0 6px 16px rgba(15, 23, 42, 0.24);
+}
+
+.site-button-scope [role="dialog"] :is(button, a.hub-button, label:has(input[type="file"])):focus-visible,
+.site-button-scope [role="dialog"] label:has(input[type="file"]):focus-within {
+  box-shadow: 0 0 0 2px #7dd3fc, 0 0 0 4px #ffffff, 0 6px 16px rgba(15, 23, 42, 0.30);
+}
+
+.site-button-scope a.hub-button:visited,
+.site-button-scope a.admin-primary-button:visited,
+.site-button-scope a.site-button:visited,
+.site-button-scope a[class*="inline-flex"][class*="rounded"]:visited,
+.site-button-scope a[class*="inline-block"][class*="rounded"][class*="bg-"]:visited {
+  color: #ffffff;
+}
+
+.site-button-scope a.hub-button:hover:visited,
+.site-button-scope a.admin-primary-button:hover:visited,
+.site-button-scope a.site-button:hover:visited,
+.site-button-scope a[class*="inline-flex"][class*="rounded"]:hover:visited,
+.site-button-scope a[class*="inline-block"][class*="rounded"][class*="bg-"]:hover:visited {
+  color: #0f172a;
+}
+
+/* Public homepage variant: match the exact top-navigation navy without changing HUB buttons. */
+.public-homepage-scope button:not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button),
+.public-homepage-scope a.hub-button,
+.public-homepage-scope a.admin-primary-button,
+.public-homepage-scope a.site-button,
+.public-homepage-scope a[class*="inline-flex"][class*="rounded"],
+.public-homepage-scope a[class*="inline-block"][class*="rounded"][class*="bg-"] {
+  border-color: #ffffff;
+  background-color: #020b1f;
+  color: #ffffff;
+}
+
+.public-homepage-scope button:not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button):hover:not(:disabled),
+.public-homepage-scope a.hub-button:hover,
+.public-homepage-scope a.admin-primary-button:hover,
+.public-homepage-scope a.site-button:hover,
+.public-homepage-scope a[class*="inline-flex"][class*="rounded"]:hover,
+.public-homepage-scope a[class*="inline-block"][class*="rounded"][class*="bg-"]:hover {
+  border-color: #ffffff;
+  background-color: #7dd3fc;
+  color: #0f172a;
+}
+
+.public-homepage-scope button:not(.hub-unstyled):not(.site-button-unstyled):not(.hub-identity-button):disabled,
+.public-homepage-scope [aria-disabled="true"].hub-button,
+.public-homepage-scope [aria-disabled="true"].hub-button:hover {
+  border-color: #ffffff;
+  background-color: #020b1f;
+  color: #ffffff;
+  opacity: 0.75;
+  transform: translateY(0);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.30);
+}
+
+.public-homepage-scope .public-header-control {
+  height: 2rem;
+  border-radius: 0.75rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.public-homepage-scope .public-menu-trigger {
+  height: 2.5rem;
+  width: 2.5rem;
+  border-radius: 0.75rem;
+  padding: 0;
+}

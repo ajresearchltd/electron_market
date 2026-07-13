@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { loadHomepageContent } from './homepageContent';
+import AiOrderChatModal from '../ai/AiOrderChatModal';
 
 const selectFields = 'section_12_title, section_12_deviz, section_12_submit_rfq, section_12_submit_rfq_link';
 
@@ -11,7 +11,7 @@ export default function BottomCTASection() {
   const [title, setTitle] = useState('Ready to source smarter?');
   const [description, setDescription] = useState('Upload your BOM and start receiving quotes from verified suppliers.');
   const [buttonLabel, setButtonLabel] = useState('Upload BOM / Get Quotes');
-  const [buttonHref, setButtonHref] = useState('/create-request');
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -22,7 +22,6 @@ export default function BottomCTASection() {
       setTitle(row.section_12_title || 'Ready to source smarter?');
       setDescription(row.section_12_deviz || 'Upload your BOM and start receiving quotes from verified suppliers.');
       setButtonLabel(row.section_12_submit_rfq || 'Upload BOM / Get Quotes');
-      setButtonHref(row.section_12_submit_rfq_link || '/create-request');
     };
 
     loadBottomCta();
@@ -37,13 +36,14 @@ export default function BottomCTASection() {
           <div className="relative z-10">
           <h2 className="text-2xl font-bold tracking-tight text-white md:text-3xl">{title}</h2>
           <p className="mx-auto mt-3 max-w-2xl text-sm leading-6 text-blue-100">{description}</p>
-          <Link href={buttonHref} className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#2f80ff] px-5 text-sm font-bold text-white shadow-lg shadow-blue-950/20 hover:bg-[#4d95ff]">
+          <button type="button" onClick={() => setIsChatOpen(true)} className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-[#2f80ff] px-5 text-sm font-bold text-white shadow-lg shadow-blue-950/20 hover:bg-[#4d95ff]">
             {buttonLabel}
             <ArrowRight size={20} aria-hidden="true" />
-          </Link>
+          </button>
           </div>
         </div>
       </div>
+      <AiOrderChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </section>
   );
 }

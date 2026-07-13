@@ -1,0 +1,1 @@
+export default function RelatedProductsState({title,message}:{title:string;message:string}){return <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-xl font-bold">{title}</h2><p className="mt-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center text-sm text-slate-600">{message}</p></section>}

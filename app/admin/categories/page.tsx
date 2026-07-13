@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
+import HubButton from '../../components/ui/HubButton';
 
 type CategoryRow = {
   cat_id: string;
@@ -329,13 +330,7 @@ export default function AdminCategoriesPage() {
               />
             </label>
             <div className="md:col-span-2">
-              <button
-                type="submit"
-                disabled={saving}
-                className="inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? 'Saving...' : 'Create Category'}
-              </button>
+              <HubButton type="submit" loading={saving} loadingText="Saving...">Create Category</HubButton>
             </div>
           </form>
         </section>
@@ -346,14 +341,7 @@ export default function AdminCategoriesPage() {
               <h2 className="text-xl font-bold">Existing Categories</h2>
               <p className="mt-1 text-sm text-slate-500">cat_id is used as the record identifier and is not edited after creation.</p>
             </div>
-            <button
-              type="button"
-              onClick={loadCategories}
-              disabled={loading || saving}
-              className="rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Refresh
-            </button>
+            <HubButton onClick={loadCategories} disabled={saving} loading={loading} loadingText="Refreshing...">Refresh</HubButton>
           </div>
 
           <div className="overflow-x-auto">
@@ -433,7 +421,7 @@ export default function AdminCategoriesPage() {
                                 type="button"
                                 onClick={() => saveEdit(category.cat_id)}
                                 disabled={saving}
-                                className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-800 hover:text-white active:bg-blue-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 focus-visible:ring-offset-2 transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Save
                               </button>
@@ -441,7 +429,7 @@ export default function AdminCategoriesPage() {
                                 type="button"
                                 onClick={cancelEdit}
                                 disabled={saving}
-                                className="rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-md border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Cancel
                               </button>
@@ -459,7 +447,7 @@ export default function AdminCategoriesPage() {
                                 type="button"
                                 onClick={() => deleteCategory(category.cat_id)}
                                 disabled={saving}
-                                className="rounded-md border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                className="rounded-md border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                               >
                                 Delete
                               </button>
