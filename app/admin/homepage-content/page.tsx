@@ -2,10 +2,12 @@
 
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
+import { createDefaultHomepageVisibility, HOMEPAGE_SECTIONS, type HomepageSectionKey } from '../../../lib/homepage/sections';
 import HubButton from '../../components/ui/HubButton';
+import WebsiteFooterEditor from './WebsiteFooterEditor';
 
 type FieldConfig = { key: string; label: string };
-type FieldGroup = { title: string; description: string; fields: FieldConfig[] };
+type FieldGroup = { title: string; description: string; fields: FieldConfig[]; sectionKey?: HomepageSectionKey };
 type HomepageContentRow = Record<string, string | null> & { homepage_content_id: string };
 
 const languageField = 'section_1_language';
@@ -15,6 +17,7 @@ const groups: FieldGroup[] = [
   {
     title: 'Header / Hero',
     description: 'Section 1 header, hero, navigation, buttons, and hero stats.',
+    sectionKey: 'hero',
     fields: [
       'section_1_country', 'section_1_name', 'section_1_description',
       'section_1_title_of_site', 'section_1_subtitle_of_site', 'section_1_link_to_get_bom', 'section_1_link_to_supplier',
@@ -26,6 +29,7 @@ const groups: FieldGroup[] = [
   {
     title: 'How it works',
     description: 'Section 2 workflow cards and button/image fields.',
+    sectionKey: 'how_it_works',
     fields: [
       'section_2_title_1', 'section_2_title_2', 'section_2_pic_1', 'section_2_name_1', 'section_2_text_1',
       'section_2_pic_2', 'section_2_name_2', 'section_2_text_2', 'section_2_pic_3', 'section_2_name_3', 'section_2_text_3',
@@ -33,8 +37,33 @@ const groups: FieldGroup[] = [
     ].map((key) => ({ key, label: key })),
   },
   {
+    title: 'Industry Solutions',
+    description: 'Section 4 homepage heading and description. Individual cards remain managed in Industry Solutions Admin.',
+    sectionKey: 'industry_solutions',
+    fields: [
+      'section_4_title', 'section_4_description',
+    ].map((key) => ({ key, label: key })),
+  },
+  {
+    title: 'Top Verified Suppliers',
+    description: 'Section 10 homepage heading and description. Supplier records remain managed in Verified Suppliers Admin.',
+    sectionKey: 'top_verified_suppliers',
+    fields: [
+      'section_10_title', 'section_10_description',
+    ].map((key) => ({ key, label: key })),
+  },
+  {
+    title: 'Recent RFQ Requests / Global Logistics Support',
+    description: 'Section 9 homepage heading and description. Live RFQ rows remain database-driven.',
+    sectionKey: 'recent_rfq',
+    fields: [
+      'section_9_title', 'section_9_description',
+    ].map((key) => ({ key, label: key })),
+  },
+  {
     title: 'Why buyers choose ElectroMarket',
     description: 'Section 5 buyer benefit cards.',
+    sectionKey: 'why_buyers',
     fields: [
       'section_5_title', 'section_5_description',
       'section_5_name_1', 'section_5_text_1', 'section_5_pic_1', 'section_5_name_2', 'section_5_text_2', 'section_5_pic_2',
@@ -45,6 +74,7 @@ const groups: FieldGroup[] = [
   {
     title: 'For Suppliers: Join Our Network',
     description: 'Section 6 supplier CTA content and cards.',
+    sectionKey: 'suppliers_network',
     fields: [
       'section_6_title', 'section_6_description',
       'section_6_title_1', 'section_6_text_1', 'section_6_pic_1', 'section_6_title_2', 'section_6_text_2', 'section_6_pic_2',
@@ -55,6 +85,7 @@ const groups: FieldGroup[] = [
   {
     title: 'Official suppliers and manufacturers',
     description: 'Section 7 official supplier/manufacturer cards.',
+    sectionKey: 'official_suppliers',
     fields: [
       'section_7_title', 'section_7_description',
       'section_7_title_1', 'section_7_text_1', 'section_7_pic_1', 'section_7_title_2', 'section_7_text_2', 'section_7_pic_2',
@@ -65,6 +96,7 @@ const groups: FieldGroup[] = [
   {
     title: 'Process: From Request to Delivery',
     description: 'Section 8 process steps.',
+    sectionKey: 'process',
     fields: [
       'section_8_title', 'section_8_description',
       'section_8_title_1', 'section_8_text_1', 'section_8_pic_1', 'section_8_title_2', 'section_8_text_2', 'section_8_pic_2',
@@ -75,6 +107,7 @@ const groups: FieldGroup[] = [
   {
     title: 'ElectroMarket in Numbers',
     description: 'Section 11 marketplace numbers.',
+    sectionKey: 'marketplace_numbers',
     fields: [
       'section_11_title', 'section_11_description',
       'section_11_pic_1', 'section_11_digit_1', 'section_11_text_1', 'section_11_pic_2', 'section_11_digit_2', 'section_11_text_2',
@@ -82,28 +115,11 @@ const groups: FieldGroup[] = [
       'section_11_pic_5', 'section_11_digit_5', 'section_11_text_5', 'section_11_pic_6', 'section_11_digit_6', 'section_11_text_6',
     ].map((key) => ({ key, label: key })),
   },
-  {
-    title: 'Footer / Bottom',
-    description: 'Section 12 footer, logo, payment/card images, and footer links.',
-    fields: [
-      'section_12_title', 'section_12_deviz', 'section_12_logo',
-      'section_12_pic_card_1', 'section_12_pic_card_1_link', 'section_12_pic_card_2', 'section_12_pic_card_2_link',
-      'section_12_pic_card_3', 'section_12_pic_card_3_link', 'section_12_pic_card_4', 'section_12_pic_card_4_link',
-      'section_12_pic_card_5', 'section_12_pic_card_5_link', 'section_12_pic_card_6', 'section_12_pic_card_6_link',
-      'section_12_how_it_work', 'section_12_how_it_work_link', 'section_12_submit_rfq', 'section_12_submit_rfq_link',
-      'section_12_find_supplier', 'section_12_find_supplier_link', 'section_12_help_center', 'section_12_help_center_link',
-      'section_12_join_as_supplier', 'section_12_join_as_supplier_link', 'section_12_supplier_guide', 'section_12_supplier_guide_link',
-      'section_12_benefit', 'section_12_benefit_link', 'section_12_resources', 'section_12_resources_link',
-      'section_12_about_us', 'section_12_about_us_link', 'section_12_news', 'section_12_news_link',
-      'section_12_careers', 'section_12_careers_link', 'section_12_partners', 'section_12_partners_link',
-      'section_12_contact_us', 'section_12_contact_us_link',
-    ].map((key) => ({ key, label: key })),
-  },
 ];
 
 const fields = groups.flatMap((group) => group.fields);
 const fieldKeys = [languageField, ...fields.map((field) => field.key)];
-const imageFieldKeys = fieldKeys.filter((key) => /pic|logo|image/i.test(key) || /^section_12_pic_card_\d+_link$/.test(key));
+const imageFieldKeys = fieldKeys.filter((key) => /pic|logo|image/i.test(key));
 const textareaPattern = /description|text|deviz|subtitle/i;
 const acceptedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 const maxImageSize = 2 * 1024 * 1024;
@@ -154,6 +170,55 @@ function ImagePreview({ src }: { src: string }) {
   );
 }
 
+type HomepageAdminSectionHeaderProps = {
+  title: string;
+  description: string;
+  sectionKey: HomepageSectionKey;
+  isEnabled: boolean;
+  savedIsEnabled: boolean;
+  isSaving: boolean;
+  disabled: boolean;
+  onEnabledChange: (sectionKey: HomepageSectionKey, isEnabled: boolean) => void;
+};
+
+function HomepageAdminSectionHeader({
+  title,
+  description,
+  sectionKey,
+  isEnabled,
+  savedIsEnabled,
+  isSaving,
+  disabled,
+  onEnabledChange,
+}: HomepageAdminSectionHeaderProps) {
+  const isSaved = isEnabled === savedIsEnabled;
+
+  return (
+    <div className={`flex flex-col gap-4 border-b pb-5 sm:flex-row sm:items-center sm:justify-between ${isEnabled ? 'border-slate-200' : 'border-slate-300'}`}>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-xl font-bold text-slate-950">{title}</h2>
+          <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${savedIsEnabled ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-700'}`}>
+            {isSaving ? 'Saving…' : !isSaved ? 'Save failed' : savedIsEnabled ? 'Visible' : 'Hidden from homepage'}
+          </span>
+        </div>
+        <p className="mt-1 text-sm text-slate-500">{description}</p>
+      </div>
+      <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 self-start rounded-lg bg-violet-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 focus-within:ring-2 focus-within:ring-blue-300 focus-within:ring-offset-2 sm:self-auto">
+        <input
+          type="checkbox"
+          checked={isEnabled}
+          disabled={disabled}
+          onChange={(event) => onEnabledChange(sectionKey, event.target.checked)}
+          aria-label={`Show ${title} section on homepage`}
+          className="h-5 w-5 rounded border-white/60 accent-blue-400"
+        />
+        Show on homepage
+      </label>
+    </div>
+  );
+}
+
 export default function AdminHomepageContentPage() {
   const supabase = useMemo(() => createClient(), []);
   const [loadedRow, setLoadedRow] = useState<HomepageContentRow | null>(null);
@@ -164,6 +229,11 @@ export default function AdminHomepageContentPage() {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [visibility, setVisibility] = useState(createDefaultHomepageVisibility);
+  const [savedVisibility, setSavedVisibility] = useState(createDefaultHomepageVisibility);
+  const [visibilityLoading, setVisibilityLoading] = useState(true);
+  const [savingSection, setSavingSection] = useState<HomepageSectionKey | null>(null);
+  const [visibilityError, setVisibilityError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>('Select a language, then load or create its homepage_content row.');
   const [debugStatus, setDebugStatus] = useState({ rowId: '-', language: 'English', lastSavedAt: '-', lastAction: 'None', lastStatus: 'Idle', lastError: '', result: 'No save yet', payloadName1: '-', payloadText1: '-', returnedName1: '-', returnedText1: '-' });
@@ -240,6 +310,53 @@ export default function AdminHomepageContentPage() {
   useEffect(() => {
     return () => revokeBlobPreviews(previews);
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadVisibility = async () => {
+      setVisibilityLoading(true);
+      setVisibilityError(null);
+      try {
+        const response = await fetch('/api/admin/homepage-content/visibility', { cache: 'no-store' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.error || 'Failed to load homepage section visibility.');
+        if (!active) return;
+        const next = { ...createDefaultHomepageVisibility(), ...result.settings };
+        setVisibility(next);
+        setSavedVisibility(next);
+      } catch (loadError) {
+        if (active) setVisibilityError(loadError instanceof Error ? loadError.message : 'Failed to load homepage section visibility.');
+      } finally {
+        if (active) setVisibilityLoading(false);
+      }
+    };
+
+    loadVisibility();
+    return () => { active = false; };
+  }, []);
+
+  const updateSectionVisibility = async (sectionKey: HomepageSectionKey, isEnabled: boolean) => {
+    setVisibility((current) => ({ ...current, [sectionKey]: isEnabled }));
+    setSavingSection(sectionKey);
+    setVisibilityError(null);
+
+    try {
+      const response = await fetch('/api/admin/homepage-content/visibility', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sectionKey, isEnabled }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Failed to save homepage section visibility.');
+      setVisibility((current) => ({ ...current, [sectionKey]: result.isEnabled }));
+      setSavedVisibility((current) => ({ ...current, [sectionKey]: result.isEnabled }));
+    } catch (saveError) {
+      setVisibilityError(saveError instanceof Error ? saveError.message : 'Failed to save homepage section visibility.');
+    } finally {
+      setSavingSection(null);
+    }
+  };
 
   const createContentRow = async () => {
     setNotice('Create button clicked');
@@ -458,7 +575,62 @@ export default function AdminHomepageContentPage() {
           <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-slate-500 shadow-xl shadow-blue-950/20">Loading...</div>
         ) : (
           <div className="space-y-8">
-            {groups.map((group) => (
+            {visibilityError && (
+              <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{visibilityError}</p>
+            )}
+            {visibilityLoading && (
+              <p className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700">Loading visibility settings…</p>
+            )}
+
+            {HOMEPAGE_SECTIONS.map((section) => {
+              const group = groups.find((candidate) => candidate.sectionKey === section.key);
+              const title = group?.title ?? section.label;
+              const description = group?.description ?? 'Manage whether this complete block is published on the homepage.';
+
+              return (
+                <section key={section.key} className={`rounded-xl border bg-white p-6 text-slate-950 shadow-xl shadow-blue-950/20 ${visibility[section.key] ? 'border-slate-200' : 'border-slate-300'}`}>
+                  <HomepageAdminSectionHeader
+                    title={title}
+                    description={description}
+                    sectionKey={section.key}
+                    isEnabled={visibility[section.key]}
+                    savedIsEnabled={savedVisibility[section.key]}
+                    isSaving={savingSection === section.key}
+                    disabled={visibilityLoading || savingSection !== null}
+                    onEnabledChange={updateSectionVisibility}
+                  />
+                  {group && (
+                    <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
+                      {group.fields.map((field) => {
+                        const imageLike = isImageLikeField(field.key);
+                        const textarea = textareaPattern.test(field.key);
+                        return (
+                          <label key={field.key} className={textarea ? 'block md:col-span-2' : 'block'}>
+                        <span className="text-sm font-semibold text-slate-700">{field.label}</span>
+                        {textarea ? (
+                          <textarea value={formData[field.key] ?? ''} onChange={(event) => updateField(field.key, event.target.value)} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+                        ) : (
+                          <input value={formData[field.key] ?? ''} onChange={(event) => updateField(field.key, event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder={imageLike ? 'URL, path, or icon text' : undefined} />
+                        )}
+                        {imageLike && (
+                          <div>
+                            <label className="mt-3 inline-flex cursor-pointer rounded-md border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                              Upload image/icon
+                              <input type="file" accept={acceptedImageTypes.join(',')} onChange={handleFileChange(field.key)} className="sr-only" />
+                            </label>
+                            <ImagePreview src={previews[field.key] || formData[field.key] || ''} />
+                          </div>
+                        )}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </section>
+              );
+            })}
+
+            {groups.filter((group) => !group.sectionKey).map((group) => (
               <section key={group.title} className="rounded-xl border border-slate-200 bg-white p-6 text-slate-950 shadow-xl shadow-blue-950/20">
                 <div className="border-b border-slate-200 pb-5">
                   <h2 className="text-xl font-bold">{group.title}</h2>
@@ -491,6 +663,8 @@ export default function AdminHomepageContentPage() {
                 </div>
               </section>
             ))}
+
+            <WebsiteFooterEditor language={editingLanguage || 'English'} />
 
             <div className="sticky bottom-4 z-10 rounded-xl border border-slate-200 bg-white/95 p-4 text-slate-950 shadow-xl backdrop-blur">
               <HubButton onClick={saveContent} loading={saving} loadingText="Saving...">Save homepage_content</HubButton>

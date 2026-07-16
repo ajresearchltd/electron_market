@@ -1,0 +1,14 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+
+export default function AdminBomRfqAction({ upload, preferences, eligibility, existingRfqId }: { upload: any; preferences: any; eligibility: { totalCount: number; eligibleCount: number }; existingRfqId?: string | null }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  if (existingRfqId) return <button onClick={() => router.push(`/admin/rfqs/${existingRfqId}`)} className="mt-3 rounded-md bg-blue-700 px-3 py-2 text-xs font-bold text-white">Open RFQ</button>;
+  const eligible = eligibility.eligibleCount;
+  const total = eligibility.totalCount;
+  const create = async () => { setBusy(true); setError(''); try { const response = await fetch(`/api/admin/bom/uploads/${upload.id}/create-rfq`, { method: 'POST' }); const result = await response.json().catch(() => ({})); if (!response.ok) throw new Error(result.error || 'Draft RFQ creation failed.'); router.push(result.navigationUrl); router.refresh(); } catch (reason) { setError(reason instanceof Error ? reason.message : 'Draft RFQ creation failed.'); } finally { setBusy(false); } };
+  return <><button onClick={() => setOpen(true)} disabled={!upload?.id || eligible === 0} className="mt-3 rounded-md bg-blue-700 px-3 py-2 text-xs font-bold text-white disabled:bg-slate-400">Create RFQ from BOM</button>{open&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"><div className="w-full max-w-xl rounded-2xl bg-white p-6"><h2 className="text-2xl font-bold text-blue-950">Create RFQ from BOM</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{[['Procurement number',upload.procurement_number],['Source BOM',upload.original_file_name||upload.document_name],['Total positions',total],['Eligible positions',eligible],['Excluded positions',Math.max(0,total-eligible)],['Initial status','Draft'],['Priority',preferences?.search_priority||'balanced'],['Maximum lead time',preferences?.max_lead_time_days?`${preferences.max_lead_time_days} days`:'No maximum']].map(([label,value])=><div key={String(label)} className="rounded-lg bg-slate-50 p-3"><div className="text-xs font-bold uppercase text-slate-500">{label}</div><div className="mt-1 text-sm font-semibold">{String(value??'—')}</div></div>)}</div>{error&&<p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}<div className="mt-6 flex justify-end gap-3"><button onClick={()=>setOpen(false)} disabled={busy} className="rounded-lg border px-4 py-2">Cancel</button><button onClick={create} disabled={busy||eligible===0} className="rounded-lg bg-blue-700 px-4 py-2 font-bold text-white disabled:bg-slate-400">{busy?'Creating…':'Create Draft RFQ'}</button></div></div></div>}</>;
+}

@@ -48,12 +48,12 @@ export default function HowItWorksSection() {
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="homepage-mobile-horizontal-scroll category-scrollbar grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" role="region" aria-label="How it works steps" tabIndex={0}>
               {steps.map((step, index) => {
                 const pic = step.pic?.trim();
                 const StepIcon = stepIcons[index] || UploadCloud;
                 return (
-                  <div key={step.number} className="relative">
+                  <div key={step.number} className="homepage-mobile-horizontal-card relative">
                     <article className="h-full rounded-xl border border-blue-100 bg-white p-4 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
                       <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-blue-700 ring-1 ring-blue-100">
                         {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-11 w-11 object-contain" /> : pic ? <span className="text-sm font-bold">{pic}</span> : <StepIcon size={30} aria-hidden="true" />}

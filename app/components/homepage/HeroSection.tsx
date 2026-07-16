@@ -49,7 +49,12 @@ export default function HeroSection() {
     <section className="relative isolate overflow-hidden bg-[#03142d] text-white">
       <div className="absolute inset-0 bg-[linear-gradient(135deg,#020b1f_0%,#061b3d_48%,#03142d_100%)]" />
       <div className="absolute inset-y-0 right-0 hidden w-[60%] md:block">
-        <img src="/reference/friz_1.jpg" alt="Electronic circuit board and digital network" className="h-full w-full object-cover object-center opacity-100" />
+        <div className="relative h-full w-full">
+          <img src="/reference/friz_1.jpg" alt="Electronic circuit board and digital network" className="h-full w-full object-cover object-center opacity-100" />
+          <Link href="/register/supplier" className="absolute bottom-6 right-6 z-10 inline-flex h-11 items-center justify-center rounded-xl border border-white/35 bg-white/[0.08] px-5 text-sm font-semibold text-white hover:bg-white/[0.15]">
+            Register as supplier
+          </Link>
+        </div>
       </div>
       <div className="absolute inset-0 bg-[linear-gradient(90deg,#020b1f_0%,#061b3d_38%,rgba(6,27,61,0.72)_52%,rgba(6,27,61,0.18)_70%,rgba(6,27,61,0)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(34,211,238,0.18),transparent_28%),radial-gradient(circle_at_18%_78%,rgba(47,128,255,0.14),transparent_32%)]" />
@@ -67,9 +72,6 @@ export default function HeroSection() {
               Upload BOM / Get Quotes
               <ArrowRight size={18} aria-hidden="true" />
             </button>
-            <Link href="/register/supplier" className="inline-flex h-11 items-center justify-center rounded-xl border border-white/35 bg-white/[0.08] px-5 text-sm font-semibold text-white hover:bg-white/[0.15]">
-              Register as supplier
-            </Link>
           </div>
 
           <div className="mt-7 grid max-w-xl grid-cols-2 gap-x-7 gap-y-4 border-t border-white/15 pt-5 sm:grid-cols-4">
@@ -85,6 +87,9 @@ export default function HeroSection() {
         <div className="relative z-0 md:hidden">
           <img src="/reference/friz_1.jpg" alt="Electronic circuit board and digital network" className="h-[300px] w-full object-cover object-center opacity-95" />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,20,45,0.08)_0%,rgba(3,20,45,0.5)_100%)]" />
+          <Link href="/register/supplier" className="absolute bottom-4 right-4 z-10 inline-flex h-11 max-w-[calc(100%-2rem)] items-center justify-center rounded-xl border border-white/35 bg-white/[0.08] px-5 text-sm font-semibold text-white hover:bg-white/[0.15]">
+            Register as supplier
+          </Link>
         </div>
       </div>
       <AiOrderChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />

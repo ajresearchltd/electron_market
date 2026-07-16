@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type WheelEvent } from 'react';
 import Link from 'next/link';
 import { Activity, Box, Cpu, Lightbulb, Link2, Settings, Wifi, Zap } from 'lucide-react';
 import { createClient } from '../../../lib/supabase/client';
@@ -19,6 +19,17 @@ const isImagePath = (value: string) => {
 
 export default function CategoriesSection() {
   const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const categoryScrollerRef = useRef<HTMLDivElement>(null);
+
+  const scrollCategories = (event: WheelEvent<HTMLDivElement>) => {
+    const scroller = categoryScrollerRef.current;
+    if (!scroller || scroller.scrollWidth <= scroller.clientWidth || Math.abs(event.deltaX) > Math.abs(event.deltaY)) {
+      return;
+    }
+
+    event.preventDefault();
+    scroller.scrollLeft += event.deltaY;
+  };
 
   useEffect(() => {
     let active = true;
@@ -45,7 +56,7 @@ export default function CategoriesSection() {
   }, []);
 
   return (
-    <section id="categories" className="bg-white py-8 md:py-10">
+    <section id="categories" className="bg-white pb-8 pt-10 md:pb-10 md:pt-12">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
@@ -57,15 +68,19 @@ export default function CategoriesSection() {
           <a href="#categories" className="hidden text-xs font-semibold text-blue-700 hover:text-blue-800 sm:block">View all categories &rarr;</a>
         </div>
 
-        <div className="pb-2">
-          <div className="flex flex-wrap justify-center gap-5">
+        <div
+          ref={categoryScrollerRef}
+          className="category-scrollbar overflow-x-auto overscroll-x-contain px-1 pb-3 touch-pan-x"
+          onWheel={scrollCategories}
+        >
+          <div className="flex w-max flex-nowrap gap-5">
             {categories.map((category) => {
               const Icon = category.icon ?? Box;
               const pic = category.pic?.trim();
               const title = category.name || 'Category';
 
               return (
-                <Link href={`/categories/${encodeURIComponent(category.cat_id)}`} key={category.cat_id}>
+                <Link className="flex-none" href={`/categories/${encodeURIComponent(category.cat_id)}`} key={category.cat_id}>
                 <article className="flex h-[210px] w-[190px] flex-shrink-0 flex-col items-center rounded-lg border border-slate-200 bg-white p-3 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
                   <div className="flex h-[130px] w-full items-center justify-center overflow-hidden rounded-md bg-[#f3f7fd] text-blue-600">
                     {pic ? (

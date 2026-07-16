@@ -5,6 +5,8 @@ import { MouseEvent, ReactNode, useEffect, useMemo, useState } from 'react';
 import { createProcurementCaseFromRfq } from '../../lib/procurement-documents/document-chain';
 import { createClient } from '../../lib/supabase/client';
 import HubButton from '../components/ui/HubButton';
+import DeleteRfqButton from './rfqs/DeleteRfqButton';
+import InvoiceHubTable from '../components/invoices/InvoiceHubTable';
 
 type StageKey =
   | 'bom_received'
@@ -30,6 +32,11 @@ type RfqRow = {
   total_requested_quantity: number | null;
   buyer_notes: string | null;
   created_at: string | null;
+  procurement_chain_id?: string | null;
+  procurement_number?: string | null;
+  source_bom_upload_id?: string | null;
+  source_bom_file?: string | null;
+  allow_all_suppliers?: boolean | null;
 };
 
 type RfqItemRow = {
@@ -57,6 +64,7 @@ type AssignmentRow = {
 };
 
 type SupplierProfileRow = {
+  canonical_supplier_id?: string | null;
   profile_id: string;
   user_id: string;
   company_name: string | null;
@@ -160,6 +168,7 @@ type ProcurementProgressRow = {
   document_name: string | null;
   current_stage: string | null;
   current_stage_label: string | null;
+  status_note?: string | null;
   payment_amount: number | null;
   payment_currency: string | null;
   payment_reference: string | null;
@@ -1541,6 +1550,7 @@ export default function AdminControlCenterPage() {
   const [showAiConversations, setShowAiConversations] = useState(false);
   const [assigningRfq, setAssigningRfq] = useState<RfqRow | null>(null);
   const [selectedSupplierIds, setSelectedSupplierIds] = useState<string[]>([]);
+  const [allowAllSuppliers,setAllowAllSuppliers]=useState(true);
   const [adminNotes, setAdminNotes] = useState('');
   const [savingAssignment, setSavingAssignment] = useState(false);
 
@@ -1576,6 +1586,9 @@ export default function AdminControlCenterPage() {
       setHeaderError(profileError?.message || '');
     }
 
+    const canonicalRfqResponse = await fetch('/api/admin/dashboard/rfqs', { cache: 'no-store' });
+    const canonicalRfqPayload = await canonicalRfqResponse.json().catch(() => ({}));
+    const canonicalRfqError = canonicalRfqResponse.ok ? null : { message: canonicalRfqPayload.error || 'Canonical RFQs could not be loaded.' };
     const [
       rfqResult,
       itemsResult,
@@ -1591,9 +1604,9 @@ export default function AdminControlCenterPage() {
       contactsResult,
       documentsResult,
     ] = await Promise.all([
-      supabase.from('rfq_orders0').select('*').order('created_at', { ascending: false }).limit(30),
-      supabase.from('rfq_order_items0').select('*').order('line_number', { ascending: true }),
-      supabase.from(ASSIGNMENTS_TABLE).select('*').order('assigned_at', { ascending: false }),
+      Promise.resolve({ data: canonicalRfqPayload.rfqs ?? [], error: canonicalRfqError }),
+      Promise.resolve({ data: canonicalRfqPayload.items ?? [], error: canonicalRfqError }),
+      Promise.resolve({ data: canonicalRfqPayload.assignments ?? [], error: canonicalRfqError }),
       supabase.from('supplier_company_profiles').select('*').order('created_at', { ascending: false }).limit(30),
       supabase.from('customer_company_profiles').select('customer_profile_id, user_id, company_name, business_registration_number, country_iso2, country_name, contact_name, contact_email, contact_phone, website, company_address, customer_notes, customer_status, created_at, updated_at').order('created_at', { ascending: false }).limit(30),
       supabase.from('user_profiles').select('id, email, role, full_name, company_name, created_at').eq('role', 'customer').order('created_at', { ascending: false }).limit(100),
@@ -1620,10 +1633,17 @@ export default function AdminControlCenterPage() {
     if (contactsResult.error) addError('Supplier Contacts', contactsResult.error.message);
     if (documentsResult.error) addError('Supplier Documents', documentsResult.error.message);
 
-    setRfqs((rfqResult.data ?? []) as RfqRow[]);
+    for (const warning of canonicalRfqPayload.warnings ?? []) addError('RFQ data integrity', warning.message);
+    const loadedRfqs=(rfqResult.data ?? []) as RfqRow[];
+    setRfqs(loadedRfqs);
     setItems((itemsResult.data ?? []) as RfqItemRow[]);
     setAssignments((assignmentsResult.data ?? []) as AssignmentRow[]);
-    setSuppliers((suppliersResult.data ?? []) as SupplierProfileRow[]);
+    const supplierProfiles = (suppliersResult.data ?? []) as SupplierProfileRow[];
+    const profileIds = supplierProfiles.map((row) => row.profile_id);
+    const canonicalLinks = profileIds.length ? await supabase.from('suppliers').select('supplier_id,source_profile_id').in('source_profile_id', profileIds) : {data:[],error:null};
+    if (canonicalLinks.error) addError('Canonical supplier links', canonicalLinks.error.message);
+    const canonicalByProfile = new Map((canonicalLinks.data ?? []).map((row:any) => [row.source_profile_id,row.supplier_id]));
+    setSuppliers(supplierProfiles.filter((row) => canonicalByProfile.has(row.profile_id)).map((row) => ({...row,canonical_supplier_id:canonicalByProfile.get(row.profile_id)!})));
     setCustomers((customersResult.data ?? []) as CustomerCompanyProfileRow[]);
     setCustomerAccounts((customerAccountsResult.data ?? []) as UserProfileRow[]);
     setSupplierAccounts((supplierAccountsResult.data ?? []) as UserProfileRow[]);
@@ -1670,7 +1690,7 @@ export default function AdminControlCenterPage() {
   const customerProfilesByUser = useMemo(() => new Map(customerProfiles.map((profile) => [profile.user_id, profile])), [customerProfiles]);
 
   const kpis = [
-    { label: 'New RFQs', value: rfqs.filter((rfq) => rfq.rfq_status === 'open').length },
+    { label: 'New RFQs', value: rfqs.filter((rfq) => ['draft','open'].includes(String(rfq.rfq_status||'').toLowerCase())).length },
     { label: 'Active Orders', value: activeOrders.filter((order) => order.order_status === 'active').length },
     { label: 'Pending Supplier Review', value: suppliers.filter((supplier) => ['pending', 'in_review', 'needs_update'].includes(supplier.verification_status || '')).length },
     { label: 'New Suppliers', value: suppliers.length },
@@ -1698,12 +1718,13 @@ export default function AdminControlCenterPage() {
     return 'rfq';
   };
 
-  const openAssignModal = (event: MouseEvent<HTMLButtonElement>, rfq: RfqRow) => {
+  const openAssignModal = async (event: MouseEvent<HTMLButtonElement>, rfq: RfqRow) => {
     event.stopPropagation();
     setAssigningRfq(rfq);
     setSelectedSupplierIds([]);
     setAdminNotes('');
     setMessage('');
+    const response=await fetch(`/api/admin/rfqs/${rfq.rfq_id}/supplier-access`,{cache:'no-store'}),result=await response.json().catch(()=>({}));if(response.ok){setAllowAllSuppliers(result.allowAllSuppliers!==false);setSelectedSupplierIds(result.selectedSupplierIds??[])}
   };
 
   const signOutAdmin = async () => {
@@ -1747,11 +1768,12 @@ export default function AdminControlCenterPage() {
   };
 
   const assignSelectedSuppliers = async () => {
-    if (!assigningRfq || selectedSupplierIds.length === 0) return;
+    if (!assigningRfq || (!allowAllSuppliers&&selectedSupplierIds.length === 0)) return;
     setSavingAssignment(true);
     setMessage('');
     setErrors([]);
-    const payload = selectedSupplierIds.map((supplierId) => {
+    const response=await fetch(`/api/admin/rfqs/${assigningRfq.rfq_id}/supplier-access`,{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({allowAllSuppliers,selectedSupplierIds})});const saved=await response.json().catch(()=>({}));if(!response.ok){setErrors([saved.error||'Supplier access could not be saved.']);setSavingAssignment(false);return}
+    /* const payload = selectedSupplierIds.map((supplierId) => {
       const supplier = suppliers.find((row) => row.user_id === supplierId);
       return {
         rfq_id: assigningRfq.rfq_id,
@@ -1785,7 +1807,8 @@ export default function AdminControlCenterPage() {
       })
       .eq('rfq_id', assigningRfq.rfq_id);
 
-    setMessage('RFQ assigned successfully.');
+    */
+    setMessage(allowAllSuppliers?'All eligible suppliers can submit offers.':'RFQ restricted to selected suppliers.');
     setAssigningRfq(null);
     setSavingAssignment(false);
     await loadDashboard();
@@ -1958,7 +1981,7 @@ export default function AdminControlCenterPage() {
         <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">Electron Market</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Admin Control Center</h1>
+            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Admin HUB</h1>
             <p className="mt-1 max-w-2xl text-sm text-blue-100">Review RFQs, suppliers, customers, and manually assign buyer RFQs to suppliers.</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -2073,12 +2096,15 @@ export default function AdminControlCenterPage() {
           action={<button type="button" onClick={() => setShowCreateRfq(true)} className="admin-primary-button admin-primary-button-compact">Add RFQ</button>}
         >
           <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="min-w-full text-left text-sm">
-              <thead className="bg-blue-600 text-white">
+            <table className="w-[1260px] table-fixed text-left text-sm">
+              <colgroup>
+                {[90,110,150,115,155,145,65,105,190,135].map((width,index)=><col key={index} style={{width}} />)}
+              </colgroup>
+              <thead className="bg-slate-900 text-white">
                 <tr>
-                  {['RFQ ID', 'Buyer', 'Category', 'Items', 'Value', 'Current Stage', 'Progress', 'Assigned Suppliers', 'Status', 'Action'].map((heading) => (
-                    <th key={heading} className={tableHeaderCellClass}>{heading}</th>
-                  ))}
+                  {['Action 1','Action 2'].map((heading)=><th key={heading} className={`${tableHeaderCellClass} bg-slate-900 text-center`}>{heading}</th>)}
+                  {['Procurement No','Date','Buyer','Source BOM','Items','Current Stage','Progress'].map((heading)=><th key={heading} className={tableHeaderCellClass}>{heading}</th>)}
+                  <th className={`${tableHeaderCellClass} bg-slate-900 text-center`}>Delete RFQ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
@@ -2086,25 +2112,19 @@ export default function AdminControlCenterPage() {
                   <tr><td colSpan={10} className={emptyCellClass}>No RFQs yet.</td></tr>
                 ) : (
                   rfqs.map((rfq) => {
-                    const stage = getRfqStage(rfq);
-                    const assignmentCount = assignmentsByRfq.get(rfq.rfq_id)?.length ?? 0;
+                    const progress=progressRows.find(row=>row.procurement_chain_id&&row.procurement_chain_id===rfq.procurement_chain_id);const stage = progress?.current_stage?normalizeStage(progress.current_stage):getRfqStage(rfq);
                     return (
-                      <tr key={rfq.rfq_id} onClick={() => setSelectedRfq(rfq)} className="cursor-pointer hover:bg-blue-50">
-                        <td className="px-4 py-3 font-semibold text-slate-950">{rfq.order_number}</td>
-                        <td className="px-4 py-3">{rfq.customer_company_name || '-'}</td>
-                        <td className="px-4 py-3">{getRfqCategory(rfq)}</td>
-                        <td className="px-4 py-3">{rfq.total_items_count ?? itemsByRfq.get(rfq.rfq_id)?.length ?? 0}</td>
-                        <td className="px-4 py-3">{getRfqValue(rfq)}</td>
-                        <td className="px-4 py-3">{stageMeta[stage].label}</td>
-                        <td className="px-4 py-3"><StageProgress currentStage={stage} /></td>
-                        <td className="px-4 py-3">{assignmentCount} assigned</td>
-                        <td className="px-4 py-3">{humanize(rfq.rfq_status)}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-2">
-                            <button type="button" onClick={(event) => { event.stopPropagation(); setSelectedRfq(rfq); }} className="font-semibold text-blue-700 hover:text-blue-800">View</button>
-                            <button type="button" onClick={(event) => openAssignModal(event, rfq)} className="font-semibold text-blue-700 hover:text-blue-800">Assign Supplier</button>
-                          </div>
-                        </td>
+                      <tr key={rfq.rfq_id} onClick={() => {window.location.href=`/admin/rfqs/${rfq.rfq_id}`}} className="group cursor-pointer hover:bg-slate-50">
+                        <td className="px-2 py-3 align-top"><Link href={`/admin/rfqs/${rfq.rfq_id}`} onClick={(event)=>event.stopPropagation()} aria-label="View RFQ" title="View RFQ" className="rfq-action-button mx-auto flex h-9 w-[76px] items-center justify-center px-2 text-xs">View</Link></td>
+                        <td className="px-2 py-3 align-top"><button type="button" aria-label="Supplier Access" title="Supplier Access" onClick={(event)=>openAssignModal(event,rfq)} className="rfq-action-button mx-auto block h-9 w-[96px] px-2 text-xs">Suppliers</button></td>
+                        <td className="px-3 py-3 align-top font-semibold text-blue-800">{rfq.procurement_number||rfq.order_number}</td>
+                        <td className="whitespace-nowrap px-3 py-3 align-top">{formatDate(rfq.created_at)}</td>
+                        <td className="px-3 py-3 align-top">{rfq.customer_company_name || '—'}</td>
+                        <td className="px-3 py-3 align-top"><span className="block truncate" title={rfq.source_bom_file||undefined}>{rfq.source_bom_file||'—'}</span></td>
+                        <td className="px-2 py-3 text-center align-top">{rfq.total_items_count ?? itemsByRfq.get(rfq.rfq_id)?.length ?? 0}</td>
+                        <td className="px-3 py-3 align-top">{progress?.current_stage_label||stageMeta[stage].label}</td>
+                        <td className="px-3 py-3 align-top">{progress?.status_note||progress?.current_stage_label||'—'}</td>
+                        <td className="px-2 py-3 align-top"><span onClick={(event)=>event.stopPropagation()} className="rfq-delete-action mx-auto block w-[112px]"><DeleteRfqButton rfqId={rfq.rfq_id} compact onDeleted={()=>{setMessage('RFQ deleted successfully.');loadDashboard()}}/></span></td>
                       </tr>
                     );
                   })
@@ -2114,6 +2134,8 @@ export default function AdminControlCenterPage() {
           </div>
         </SectionCard>
 
+        <InvoiceHubTable role="admin" title="Latest Invoices" />
+
         <div className="grid gap-6 xl:grid-cols-2">
           <SectionCard
             title="Latest Suppliers"
@@ -2122,25 +2144,26 @@ export default function AdminControlCenterPage() {
             <div className="overflow-x-auto rounded-xl border border-slate-200">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-blue-600 text-white">
-                  <tr>{['Company', 'Country', 'Main Contact', 'Verification Status', 'Categories', 'Documents', 'Action'].map((heading) => <th key={heading} className={tableHeaderCellClass}>{heading}</th>)}</tr>
+                  <tr>{['Registered', 'Company', 'Country', 'Registration Email', 'Profile', 'Documents', 'Verification', 'Action'].map((heading) => <th key={heading} className={tableHeaderCellClass}>{heading}</th>)}</tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 bg-white">
                   {suppliers.length === 0 ? (
-                    <tr><td colSpan={7} className={emptyCellClass}>No suppliers yet.</td></tr>
+                    <tr><td colSpan={8} className={emptyCellClass}>No suppliers yet.</td></tr>
                   ) : suppliers.map((supplier) => (
                     <tr key={supplier.profile_id} className="hover:bg-blue-50">
+                      <td className="px-4 py-3">{formatDate(supplier.created_at)}</td>
                       <td className="px-4 py-3 font-semibold">
-                        <Link href={`/admin/suppliers/${supplier.profile_id}`} className="text-blue-700 hover:text-blue-800">
+                        <Link href={`/admin/suppliers/${supplier.canonical_supplier_id || supplier.profile_id}`} className="text-blue-700 hover:text-blue-800">
                           {supplier.company_name || 'Unnamed supplier'}
                         </Link>
                       </td>
                       <td className="px-4 py-3">{supplier.country_name || '-'}</td>
-                      <td className="px-4 py-3">{supplier.main_contact_name || supplier.main_contact_email || '-'}</td>
-                      <td className="px-4 py-3">{humanize(supplier.verification_status)}</td>
-                      <td className="px-4 py-3">{supplier.product_categories_text || '-'}</td>
+                      <td className="px-4 py-3">{supplier.company_email || supplier.main_contact_email || '-'}</td>
+                      <td className="px-4 py-3">{supplier.company_name&&supplier.country_name&&supplier.company_email?'Complete':'Incomplete'}</td>
                       <td className="px-4 py-3">{documents.filter((doc) => doc.profile_id === supplier.profile_id).length}</td>
+                      <td className="px-4 py-3">{humanize(supplier.verification_status)}</td>
                       <td className="px-4 py-3">
-                        <Link href={`/admin/suppliers/${supplier.profile_id}`} className="font-semibold text-blue-700 hover:text-blue-800">View/Review</Link>
+                        <Link href={`/admin/suppliers/${supplier.canonical_supplier_id || supplier.profile_id}`} className="font-semibold text-blue-700 hover:text-blue-800">Review / Edit</Link>
                       </td>
                     </tr>
                   ))}
@@ -2212,6 +2235,7 @@ export default function AdminControlCenterPage() {
                 { label: 'Main Table', href: '/admin/homepage-content' },
                 { label: 'How It Works', href: '/admin/how-it-works' },
                 { label: 'Categories', href: '/admin/categories' },
+                { label: 'Supplier Inbox', href: '/admin/supplier-inbox' },
                 { label: 'Discount Prices', href: '/admin/discount-prices' },
                 { label: 'AI config', href: '/admin/ai-config' },
                 { label: 'Octopart request', href: '/admin/octopart-requests' },
@@ -2502,8 +2526,8 @@ export default function AdminControlCenterPage() {
               <p>Items: {assigningRfq.total_items_count ?? itemsByRfq.get(assigningRfq.rfq_id)?.length ?? 0}</p>
               <p>Deadline: {formatDate(assigningRfq.deadline_at)}</p>
             </SectionCard>
-            <SectionCard title="Select Suppliers">
-              <div className="grid gap-3 md:grid-cols-2">
+            <SectionCard title="Supplier Access"><label className="block rounded-xl border border-blue-200 bg-blue-50 p-4"><input type="checkbox" checked={allowAllSuppliers} onChange={e=>setAllowAllSuppliers(e.target.checked)} className="mr-2"/><span className="font-bold">Allow all eligible suppliers to submit offers</span><p className="mt-1 text-sm text-slate-600">This RFQ is available to all active and verified suppliers by default. Uncheck only to restrict it.</p></label>
+              {!allowAllSuppliers&&<div className="mt-4 grid gap-3 md:grid-cols-2">
                 {suppliers.map((supplier) => {
                   const alreadyAssigned = (assignmentsByRfq.get(assigningRfq.rfq_id) ?? []).some((assignment) => assignment.supplier_id === supplier.user_id);
                   return (
@@ -2525,12 +2549,12 @@ export default function AdminControlCenterPage() {
                     </label>
                   );
                 })}
-              </div>
+              </div>}
               <label className="mt-4 block">
                 <span className="text-sm font-semibold text-slate-700">Admin notes</span>
                 <textarea value={adminNotes} onChange={(event) => setAdminNotes(event.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm" />
               </label>
-              <HubButton onClick={assignSelectedSuppliers} disabled={selectedSupplierIds.length === 0} loading={savingAssignment} loadingText="Assigning..." className="mt-4">Assign to selected supplier(s)</HubButton>
+              <HubButton onClick={assignSelectedSuppliers} disabled={!allowAllSuppliers&&selectedSupplierIds.length === 0} loading={savingAssignment} loadingText="Saving..." className="mt-4">Save Supplier Access</HubButton>
             </SectionCard>
           </div>
         </Modal>

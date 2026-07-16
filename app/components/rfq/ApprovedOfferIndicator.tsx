@@ -1,0 +1,3 @@
+export default function ApprovedOfferIndicator({label='Approved',detail}:{label?:string;detail?:string|null}){
+  return <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800" aria-label="Buyer approved this supplier offer" title="Buyer approved this supplier offer"><span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-white" aria-hidden="true">✓</span><span>{label}</span>{detail&&<span className="font-semibold text-emerald-700">· {detail}</span>}</span>
+}

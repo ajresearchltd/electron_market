@@ -6,6 +6,11 @@ type Row = Record<string, any>;
 type Money = { currency: string; amount: number };
 
 const normalized = (value: unknown) => String(value ?? '').trim().toLowerCase();
+const withoutSupplierIdentity = (value: Row): Row => {
+  const row = { ...value };
+  for (const key of ['supplier_id','supplier_user_id','supplier_company_name','supplier_contact_name','supplier_email','supplier_phone']) delete row[key];
+  return row;
+};
 const uniqueCount = (rows: Row[], field: string) => new Set(rows.map((row) => String(row[field] ?? '')).filter(Boolean)).size;
 const totals = (rows: Row[], amountField: string): Money[] => {
   const grouped = new Map<string, number>();
@@ -40,7 +45,7 @@ export async function GET() {
       .eq('customer_user_id', user.id),
     supabase.from('rfq_orders0').select('rfq_id, order_number, rfq_status').eq('customer_id', user.id),
     supabase.from('active_orders').select('*').eq('customer_id', user.id).order('updated_at', { ascending: false }),
-    supabase.from('procurement_invoices').select('id, procurement_chain_id, procurement_number, invoice_number, invoice_status, payment_status, total_amount, currency, supplier_company_name, updated_at').eq('customer_user_id', user.id).order('updated_at', { ascending: false }),
+    supabase.from('procurement_invoices').select('id, procurement_chain_id, procurement_number, invoice_number, invoice_status, payment_status, paid_boolean, paid_at, total_amount, currency, updated_at').eq('customer_user_id', user.id).order('updated_at', { ascending: false }),
     supabase.from('procurement_waybills').select('id, procurement_chain_id, procurement_number, waybill_number, waybill_status, carrier, tracking_number, shipped_date, actual_delivery_date, updated_at').eq('customer_user_id', user.id).order('updated_at', { ascending: false }),
     supabase.from('procurement_receive_orders').select('id, procurement_chain_id, procurement_number, receive_order_number, receive_status, received_date, updated_at').eq('customer_user_id', user.id).order('updated_at', { ascending: false }),
   ]);
@@ -78,7 +83,7 @@ export async function GET() {
 
   const invoices = (invoiceResult.data || []) as Row[];
   const activeInvoices = invoices.filter(belongsToActiveOrder);
-  const paidInvoices = activeInvoices.filter((row) => ['paid', 'completed', 'settled', 'buyer_paid'].includes(normalized(row.payment_status)));
+  const paidInvoices = activeInvoices.filter((row) => row.paid_boolean === true || normalized(row.invoice_status) === 'paid');
   const waybills = (waybillResult.data || []) as Row[];
   const activeWaybills = waybills.filter(belongsToActiveOrder);
   const shippedWaybills = activeWaybills.filter((row) => row.shipped_date || ['shipped', 'in_transit', 'delivered'].includes(normalized(row.waybill_status)));
@@ -143,8 +148,13 @@ export async function GET() {
         amountByCurrency: totals(receivedInvoices, 'total_amount'),
       },
     },
-    progressRows,
+    progressRows: progressRows.map(withoutSupplierIdentity),
     uploadedBomRows,
-    documents: { orders: allOrders, invoices, waybills, receives },
+    documents: {
+      orders: allOrders.map(withoutSupplierIdentity),
+      invoices: invoices.map(withoutSupplierIdentity),
+      waybills: waybills.map(withoutSupplierIdentity),
+      receives: receives.map(withoutSupplierIdentity),
+    },
   });
 }

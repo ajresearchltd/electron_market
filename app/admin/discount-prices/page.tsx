@@ -270,7 +270,7 @@ export default function AdminDiscountPricesPage() {
       <section className="bg-[#07152f] px-4 py-8 text-white sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-wide text-blue-200">Admin Control Center</p>
+            <p className="text-sm font-semibold uppercase tracking-wide text-blue-200">Admin HUB</p>
             <h1 className="mt-2 text-3xl font-bold">Discount Prices</h1>
             <p className="mt-2 text-blue-100">Manage the Special Offers cards shown under Shop by Categories.</p>
           </div>

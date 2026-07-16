@@ -74,7 +74,8 @@ export async function middleware(request: NextRequest) {
   const allowedRole =
     (pathname.startsWith('/customer') && role === 'customer') ||
     (pathname.startsWith('/supplier') && role === 'supplier') ||
-    (pathname.startsWith('/admin') && role === 'admin');
+    (pathname.startsWith('/admin') && role === 'admin') ||
+    (pathname.startsWith('/admin/supplier-inbox') && role === 'support');
 
   if (allowedRole) {
     return response;

@@ -55,6 +55,7 @@ type ActiveOrderRow = {
 type IncomingRfqRow = {
   assignmentId: string;
   rfqId: string;
+  procurementNumber: string;
   category: string;
   parts: string;
   quantity: string;
@@ -484,7 +485,8 @@ export default function SupplierDashboardPage() {
 
                   return {
                     assignmentId: assignment?.assignment_id ?? '',
-                    rfqId: order.order_number,
+                    rfqId: order.rfq_id,
+                    procurementNumber: order.order_number,
                     category,
                     parts: `${partsCount} line item${partsCount === 1 ? '' : 's'}`,
                     quantity: `${requestedQuantity.toLocaleString('en-US')} pcs`,
@@ -749,7 +751,7 @@ export default function SupplierDashboardPage() {
                 ) : (
                   incomingRfqs.map((row) => (
                     <tr key={row.rfqId}>
-                      <td className="px-4 py-3 font-semibold text-slate-900">{row.rfqId}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-900">{row.procurementNumber}</td>
                       <td className="px-4 py-3">{row.category}</td>
                       <td className="px-4 py-3">{row.parts}</td>
                       <td className="px-4 py-3">{row.quantity}</td>
@@ -763,9 +765,9 @@ export default function SupplierDashboardPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button type="button" onClick={() => markAssignedRfqViewed(row.assignmentId)} className="font-semibold text-blue-700 hover:text-blue-800">
+                        <Link href={`/supplier/rfqs/${row.rfqId}`} onClick={() => markAssignedRfqViewed(row.assignmentId)} className="font-semibold text-blue-700 hover:text-blue-800">
                           {row.actionLabel}
-                        </button>
+                        </Link>
                       </td>
                     </tr>
                   ))

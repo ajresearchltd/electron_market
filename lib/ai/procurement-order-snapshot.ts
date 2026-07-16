@@ -88,6 +88,10 @@ export type ProcurementOrderSnapshot = {
     shortestCompleteLeadTimeDays: number | null;
     latestQuoteAt: string | null;
     comparisonReady: boolean;
+    validatedResponseCount: number;
+    reviewRequiredResponseCount: number;
+    partiallyCoveredBomLines: number;
+    alternativesAwaitingApproval: number;
   };
   order: { approved: boolean; activeOrderExists: boolean; activeOrderCount: number };
   invoice: { exists: boolean; count: number; paymentStatus: string | null };
@@ -295,6 +299,13 @@ export async function getProcurementOrderSnapshotForAI({
   const assignmentRows = rfqs.length
     ? await rows(database.from('rfq_supplier_assignments').select('rfq_id,supplier_id,assignment_status,assigned_at,supplier_company_name').in('rfq_id', rfqs.map((row) => row.rfq_id)))
     : assignments;
+  const [validatedResponses, reviewResponses, inboundResponseItems, coverageRows] = await Promise.all([
+    rows(database.from('supplier_responses').select('id,supplier_id,default_currency,quote_valid_until,created_at').eq('procurement_chain_id', procurementChainId).eq('status', 'validated').eq('is_current', true)),
+    rows(database.from('supplier_responses').select('id').eq('procurement_chain_id', procurementChainId).eq('needs_review', true).eq('is_current', true)),
+    rows(database.from('supplier_response_items').select('supplier_response_id,bom_item_id,requested_quantity,offered_quantity,available_quantity,calculated_unit_price,currency,lead_time_days,moq,certificate_available,response_status,review_status').eq('procurement_chain_id', procurementChainId).eq('is_current', true).neq('review_status', 'pending')),
+    rows(database.from('procurement_supplier_coverage').select('*').eq('procurement_chain_id', procurementChainId).limit(1)),
+  ]);
+  const coverage = coverageRows[0] ?? null;
   const progress = progressRows[0] ?? null;
   const timeline = progress?.id
     ? await rows(database.from('procurement_progress_events').select('stage_code,stage_label,created_at,progress_id').eq('progress_id', progress.id).order('created_at'))
@@ -306,13 +317,13 @@ export async function getProcurementOrderSnapshotForAI({
   const verificationStarted = items.some((item) => Boolean(item.part_number_verified_at) || !isPending(item.part_number_check_status));
   const verificationCompleted = items.length > 0 && pendingLines === 0;
 
-  const supplierKeys = [...assignmentRows, ...quotes, ...communications]
+  const supplierKeys = [...assignmentRows, ...quotes, ...validatedResponses, ...communications]
     .map((row) => String(row.supplier_id ?? row.supplier_key ?? '').trim()).filter(Boolean);
   const aliases = await resolveAliases(database, procurementChainId, supplierKeys);
   const internalSupplierIdentifiers = [...new Set([...assignmentRows, ...quotes].flatMap((row) => [row.supplier_company_name, row.supplier_contact_name, row.supplier_email]).map((value) => String(value ?? '').trim()).filter(Boolean))];
   const quoteItemsByQuote = new Map<string, Row[]>();
   for (const item of quoteItems) quoteItemsByQuote.set(String(item.quote_id), [...(quoteItemsByQuote.get(String(item.quote_id)) ?? []), item]);
-  const anonymousQuotes: AnonymousQuote[] = quotes.map((quote) => {
+  const legacyAnonymousQuotes: AnonymousQuote[] = quotes.map((quote) => {
     const itemsForQuote = quoteItemsByQuote.get(String(quote.quote_id)) ?? [];
     const key = String(quote.supplier_id ?? '');
     const leadTimes = itemsForQuote.map((item) => numberOrNull(item.lead_time_days)).filter((value): value is number => value !== null);
@@ -329,7 +340,16 @@ export async function getProcurementOrderSnapshotForAI({
       certificateAvailability: 'not_recorded',
     };
   });
-  const respondedKeys = new Set(quotes.map((quote) => String(quote.supplier_id ?? '')).filter(Boolean));
+  const validatedItemsByResponse = new Map<string, Row[]>();
+  for (const item of inboundResponseItems) validatedItemsByResponse.set(String(item.supplier_response_id), [...(validatedItemsByResponse.get(String(item.supplier_response_id)) ?? []), item]);
+  const inboundAnonymousQuotes: AnonymousQuote[] = validatedResponses.map((response) => {
+    const responseItems = validatedItemsByResponse.get(String(response.id)) ?? [];
+    const leads = responseItems.map((item) => numberOrNull(item.lead_time_days)).filter((value): value is number => value !== null);
+    const moqs = responseItems.map((item) => numberOrNull(item.moq)).filter((value): value is number => value !== null);
+    return { supplierAlias: aliases.get(String(response.supplier_id)) ?? 'Anonymous supplier', status: 'validated', total: null, currency: response.default_currency ?? responseItems.find((item) => item.currency)?.currency ?? null, validUntil: response.quote_valid_until ?? null, quotedLines: new Set(responseItems.map((item) => item.bom_item_id).filter(Boolean)).size, coveredLines: responseItems.filter((item) => Number(item.available_quantity ?? item.offered_quantity ?? 0) >= Number(item.requested_quantity ?? 0)).length, maxLeadTimeDays: leads.length ? Math.max(...leads) : null, minimumOrderQuantity: moqs.length ? Math.min(...moqs) : null, certificateAvailability: responseItems.some((item) => item.certificate_available === true) ? 'available' : responseItems.some((item) => item.certificate_available === false) ? 'unavailable' : 'not_recorded' };
+  });
+  const anonymousQuotes = [...legacyAnonymousQuotes, ...inboundAnonymousQuotes];
+  const respondedKeys = new Set([...quotes, ...validatedResponses].map((quote) => String(quote.supplier_id ?? '')).filter(Boolean));
   const currencies = [...new Set(quotes.map((quote) => String(quote.currency ?? '').toUpperCase()).filter(Boolean))];
   const lowestTotalByCurrency: Record<string, number> = {};
   for (const quote of quotes) {
@@ -398,31 +418,35 @@ export async function getProcurementOrderSnapshotForAI({
       anonymousSuppliersPending: Math.max(0, new Set(assignmentRows.map((row) => String(row.supplier_id)).filter(Boolean)).size - respondedKeys.size),
     },
     quotes: {
-      exist: quotes.length > 0,
-      count: quotes.length,
+      exist: quotes.length > 0 || validatedResponses.length > 0,
+      count: quotes.length + validatedResponses.length,
       currencies,
-      quotedBomLines: quotedLineNumbers.size,
-      fullyCoveredBomLines: fullyCoveredLineNumbers.size,
-      uncoveredBomLines: Math.max(0, itemCount - quotedLineNumbers.size),
+      quotedBomLines: coverage ? Number(coverage.offered_lines ?? 0) : quotedLineNumbers.size,
+      fullyCoveredBomLines: coverage ? Number(coverage.fully_covered_lines ?? 0) : fullyCoveredLineNumbers.size,
+      uncoveredBomLines: coverage ? Number(coverage.uncovered_lines ?? 0) : Math.max(0, itemCount - quotedLineNumbers.size),
       lowestTotalByCurrency,
       shortestCompleteLeadTimeDays: completeLeadTimes.length ? Math.min(...completeLeadTimes) : null,
       latestQuoteAt: latest(quotes, 'created_at'),
-      comparisonReady: quotes.length > 1,
+      comparisonReady: coverage ? Boolean(coverage.comparison_ready) : anonymousQuotes.length > 1,
+      validatedResponseCount: validatedResponses.length,
+      reviewRequiredResponseCount: reviewResponses.length,
+      partiallyCoveredBomLines: Number(coverage?.partially_covered_lines ?? 0),
+      alternativesAwaitingApproval: Number(coverage?.alternatives_pending_approval ?? 0),
     },
     order: { approved: orders.length > 0 || Boolean(progress?.approved_at), activeOrderExists: orders.length > 0, activeOrderCount: orders.length },
     invoice: { exists: invoices.length > 0, count: invoices.length, paymentStatus: invoices.at(-1)?.payment_status ?? null },
     waybill: { exists: waybills.length > 0, count: waybills.length, shipmentStatus: waybills.at(-1)?.waybill_status ?? null },
     receive: { exists: receiveOrders.length > 0, count: receiveOrders.length, receivedStatus: receiveOrders.at(-1)?.receive_status ?? null },
     claims: { exists: false, count: 0, openCount: 0, refundPending: false, refundCompleted: orders.some((row) => statusIncludes(row.payment_status, ['refunded'])) },
-    documents: { bom: true, rfq: rfqs.length > 0, quote: quotes.length > 0, invoice: invoices.length > 0, waybill: waybills.length > 0, receiveOrder: receiveOrders.length > 0, claim: false, refundConfirmation: orders.some((row) => statusIncludes(row.payment_status, ['refunded'])) },
+    documents: { bom: true, rfq: rfqs.length > 0, quote: anonymousQuotes.length > 0, invoice: invoices.length > 0, waybill: waybills.length > 0, receiveOrder: receiveOrders.length > 0, claim: false, refundConfirmation: orders.some((row) => statusIncludes(row.payment_status, ['refunded'])) },
     timeline: timeline.map((event) => ({ eventCode: String(event.stage_code), label: String(event.stage_label), occurredAt: String(event.created_at) })),
     dataAvailability: {
       supplierSearchAvailable: assignmentRows.length > 0,
       supplierResponsesAvailable: respondedKeys.size > 0,
-      priceDataAvailable: quotes.some((quote) => numberOrNull(quote.quote_total) !== null),
-      leadTimeDataAvailable: quoteItems.some((item) => numberOrNull(item.lead_time_days) !== null),
-      moqDataAvailable: false,
-      certificateDataAvailable: false,
+      priceDataAvailable: quotes.some((quote) => numberOrNull(quote.quote_total) !== null) || inboundResponseItems.some((item) => numberOrNull(item.calculated_unit_price) !== null),
+      leadTimeDataAvailable: quoteItems.some((item) => numberOrNull(item.lead_time_days) !== null) || inboundResponseItems.some((item) => numberOrNull(item.lead_time_days) !== null),
+      moqDataAvailable: inboundResponseItems.some((item) => numberOrNull(item.moq) !== null),
+      certificateDataAvailable: inboundResponseItems.some((item) => item.certificate_available !== null),
       shippingDataAvailable: waybills.length > 0,
       receiptDataAvailable: receiveOrders.length > 0,
     },

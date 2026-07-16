@@ -1,0 +1,4 @@
+import {NextResponse} from 'next/server';
+import {requireInternalApi} from '../../../../../lib/auth/require-internal-api';
+import {invoiceDetails} from '../../../../../lib/invoices/server';
+export async function GET(_:Request,{params}:{params:Promise<{invoiceId:string}>}){const auth=await requireInternalApi();if('error'in auth)return NextResponse.json({error:auth.error},{status:auth.status});if(auth.role!=='admin')return NextResponse.json({error:'Admin authorization is required.'},{status:403});try{const data=await invoiceDetails(auth.admin,(await params).invoiceId,'admin');return data?NextResponse.json(data):NextResponse.json({error:'Invoice not found.'},{status:404})}catch(error){console.error('Admin Invoice detail failed:',error);return NextResponse.json({error:'Invoice details could not be loaded.'},{status:500})}}

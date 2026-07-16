@@ -20,24 +20,24 @@ export default function CustomerReviewsSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="homepage-mobile-reviews-grid grid grid-cols-1 gap-4 md:grid-cols-2">
           {reviews.map((review) => (
-            <article key={review.name} className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-200 hover:shadow-md">
-              <div className="mb-4 flex items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
+            <article key={review.name} className="homepage-mobile-review-card rounded-lg border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-200 hover:shadow-md">
+              <div className="homepage-mobile-review-identity mb-4 flex items-start gap-3">
+                <div className="homepage-mobile-review-avatar flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">
                   {review.initials}
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-950">{review.name}</h3>
-                  <p className="text-sm text-slate-500">{review.company}</p>
+                  <h3 className="homepage-mobile-review-name font-bold text-slate-950">{review.name}</h3>
+                  <p className="homepage-mobile-review-company text-sm text-slate-500">{review.company}</p>
                 </div>
               </div>
-              <div className="mb-3 flex gap-1">
+              <div className="homepage-mobile-review-rating mb-3 flex gap-1">
                 {[...Array(5)].map((_, index) => (
                   <Star key={index} size={16} className={index < review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'} />
                 ))}
               </div>
-              <p className="text-sm leading-6 text-slate-700">"{review.text}"</p>
+              <p className="homepage-mobile-review-text text-sm leading-6 text-slate-700">"{review.text}"</p>
             </article>
           ))}
         </div>

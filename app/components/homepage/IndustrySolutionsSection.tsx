@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Building2, Car, Factory, HeartPulse, RadioTower, Zap } from 'lucide-react';
 import { createClient } from '../../../lib/supabase/client';
+import { loadHomepageContent } from './homepageContent';
 
 type IndustrySolutionRow = {
   ind_id: string;
@@ -17,6 +18,8 @@ const isImagePath = (value: string) => value.startsWith('http://') || value.star
 
 export default function IndustrySolutionsSection() {
   const [solutions, setSolutions] = useState<IndustrySolutionRow[]>([]);
+  const [title, setTitle] = useState('Industry Solutions');
+  const [description, setDescription] = useState('Specialized sourcing support for component-heavy industries.');
 
   useEffect(() => {
     let active = true;
@@ -44,7 +47,15 @@ export default function IndustrySolutionsSection() {
       })));
     };
 
+    const loadSectionContent = async () => {
+      const row = await loadHomepageContent('section_4_title, section_4_description');
+      if (!active || !row) return;
+      setTitle(row.section_4_title || 'Industry Solutions');
+      setDescription(row.section_4_description || 'Specialized sourcing support for component-heavy industries.');
+    };
+
     loadSolutions();
+    loadSectionContent();
     return () => {
       active = false;
     };
@@ -54,9 +65,9 @@ export default function IndustrySolutionsSection() {
     <section className="bg-white py-8 md:py-10">
       <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
         <div className="mb-5">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-950">Industry Solutions</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Specialized sourcing support for component-heavy industries.
+            {description}
           </p>
         </div>
 

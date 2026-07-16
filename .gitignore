@@ -42,3 +42,6 @@ Thumbs.db
 
 # Project-specific
 /dist
+
+# Private runtime-generated Invoice documents
+/invoice/

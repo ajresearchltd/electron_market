@@ -51,12 +51,12 @@ export default function ProcessSection() {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="homepage-mobile-horizontal-scroll category-scrollbar grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4" role="region" aria-label="Request to delivery process" tabIndex={0}>
           {steps.map((step, index) => {
             const Icon = step.icon;
             const pic = step.pic?.trim();
             return (
-              <article key={`${step.title}-${index}`} className="rounded-lg border border-slate-200 bg-white p-4 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
+              <article key={`${step.title}-${index}`} className="homepage-mobile-horizontal-card rounded-lg border border-slate-200 bg-white p-4 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
                 <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-blue-600">
                   {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-10 w-10 rounded-full object-cover" /> : pic || <Icon size={24} aria-hidden="true" />}
                 </div>

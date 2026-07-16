@@ -25,6 +25,105 @@ a {
   text-decoration: none;
 }
 
+.category-scrollbar {
+  scrollbar-color: #ffffff #e2e8f0;
+  scrollbar-width: thin;
+}
+
+.category-scrollbar::-webkit-scrollbar {
+  height: 8px;
+}
+
+.category-scrollbar::-webkit-scrollbar-track {
+  border-radius: 9999px;
+  background: #f1f5f9;
+}
+
+.category-scrollbar::-webkit-scrollbar-thumb {
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.18);
+}
+
+.category-scrollbar::-webkit-scrollbar-thumb:hover {
+  border-color: #94a3b8;
+  background: #ffffff;
+}
+
+@media (max-width: 639px) and (orientation: portrait) {
+  .homepage-mobile-horizontal-scroll {
+    display: flex !important;
+    min-width: 0;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    padding-bottom: 0.875rem;
+  }
+
+  .homepage-mobile-horizontal-card {
+    width: clamp(250px, 78vw, 310px);
+    min-width: clamp(250px, 78vw, 310px);
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  .homepage-mobile-reviews-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.625rem;
+  }
+
+  .homepage-mobile-review-card {
+    min-width: 0;
+    padding: 0.6875rem;
+  }
+
+  .homepage-mobile-review-identity {
+    margin-bottom: 0.625rem;
+    gap: 0.5rem;
+  }
+
+  .homepage-mobile-review-avatar {
+    width: 2rem;
+    height: 2rem;
+    font-size: 0.6875rem;
+  }
+
+  .homepage-mobile-review-name {
+    font-size: 0.8125rem;
+    line-height: 1.15rem;
+  }
+
+  .homepage-mobile-review-company {
+    font-size: 0.6875rem;
+    line-height: 0.95rem;
+  }
+
+  .homepage-mobile-review-rating {
+    margin-bottom: 0.5rem;
+    gap: 0.125rem;
+  }
+
+  .homepage-mobile-review-rating svg {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  .homepage-mobile-review-text {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+    font-size: 0.75rem;
+    line-height: 1.05rem;
+  }
+}
+
 button,
 a {
   transition-property: color, background-color, border-color, box-shadow, transform, opacity;
@@ -32,6 +131,13 @@ a {
 }
 
 @layer components {
+  .hub-table-header,
+  .hub-scope thead,
+  thead.bg-blue-600 {
+    background-color: #0f172a !important;
+    color: #ffffff !important;
+  }
+
   .admin-primary-button {
     @apply relative inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-white px-4 py-2.5 text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-75;
     background-color: #454a9c;
@@ -209,6 +315,50 @@ a {
 .site-button-scope a[class*="inline-flex"][class*="rounded"]:hover:visited,
 .site-button-scope a[class*="inline-block"][class*="rounded"][class*="bg-"]:hover:visited {
   color: #0f172a;
+}
+
+/* Latest RFQs: explicit rendered-control variants override the broad HUB table rules above. */
+.site-button-scope .rfq-action-button,
+.site-button-scope .rfq-action-button:visited {
+  border: 1px solid rgba(255, 255, 255, 0.9) !important;
+  border-radius: 10px !important;
+  background-color: #454a9c !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.25) !important;
+}
+
+.site-button-scope .rfq-action-button:hover,
+.site-button-scope .rfq-action-button:hover:visited {
+  background-color: #bae6fd !important;
+  color: #0f172a !important;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.30) !important;
+}
+
+.site-button-scope .rfq-delete-action > button {
+  width: 100% !important;
+  height: 2.25rem !important;
+  padding: 0 0.25rem !important;
+  border: 1px solid #b91c1c !important;
+  border-radius: 10px !important;
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  font-size: 0.75rem !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 10px rgba(127, 29, 29, 0.30) !important;
+}
+
+.site-button-scope .rfq-delete-action > button:hover:not(:disabled) {
+  background-color: #b91c1c !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 14px rgba(127, 29, 29, 0.36) !important;
+}
+
+.site-button-scope .rfq-delete-action > button:disabled {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 /* Public homepage variant: match the exact top-navigation navy without changing HUB buttons. */

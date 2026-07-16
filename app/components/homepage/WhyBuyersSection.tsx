@@ -48,12 +48,12 @@ export default function WhyBuyersSection() {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">{description}</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6">
+        <div className="homepage-mobile-horizontal-scroll category-scrollbar grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-6" role="region" aria-label="Buyer benefits" tabIndex={0}>
           {benefits.map((benefit) => {
             const Icon = benefit.icon;
             const pic = benefit.pic?.trim();
             return (
-              <article key={benefit.title} className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-200 hover:shadow-md">
+              <article key={benefit.title} className="homepage-mobile-horizontal-card rounded-lg border border-slate-200 bg-white p-4 shadow-sm hover:border-blue-200 hover:shadow-md">
                 <div className="mb-3 flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-blue-50 text-sm font-bold text-blue-600">
                   {pic && isImagePath(pic) ? <img src={pic} alt="" className="h-8 w-8 rounded-full object-cover" /> : pic || <Icon size={22} aria-hidden="true" />}
                 </div>

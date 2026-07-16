@@ -822,7 +822,7 @@ export async function getProcurementDocumentsByChainId(supabase: SupabaseLike, c
   const progress = await maybeData(supabase.from('procurement_progress').select('*').eq('procurement_chain_id', id).maybeSingle());
   const procurementCase = await maybeData(supabase.from('procurement_cases').select('*').eq('id', id).maybeSingle());
 
-  const [
+  let [
     bomHeader,
     bomItems,
     rfqHeaders,
@@ -857,6 +857,16 @@ export async function getProcurementDocumentsByChainId(supabase: SupabaseLike, c
     maybeData(supabase.from('procurement_receive_orders').select('*').eq('procurement_chain_id', id).order('created_at', { ascending: false })),
     maybeData(supabase.from('procurement_receive_order_items').select('*').eq('procurement_chain_id', id).order('line_number', { ascending: true })),
   ]);
+
+  // Older or partially backfilled documents may be reachable through canonical source UUIDs
+  // even when their direct procurement_chain_id column is missing.
+  const sourceBomId = procurementChain.data?.source_bom_upload_id || progress.data?.customer_bom_upload_id || rfq0Headers.data?.[0]?.source_bom_upload_id;
+  if (!bomHeader.data && sourceBomId) bomHeader = await maybeData(supabase.from('customer_bom_uploads').select('*').eq('id', sourceBomId).maybeSingle());
+  if (!(bomItems.data ?? []).length && sourceBomId) bomItems = await maybeData(supabase.from('customer_bom_upload_items').select('*').eq('upload_id', sourceBomId).order('row_number', { ascending: true }));
+  const sourceRfqId = procurementChain.data?.source_rfq_id || progress.data?.rfq_id || bomHeader.data?.rfq_id;
+  if (!(rfq0Headers.data ?? []).length && sourceRfqId) rfq0Headers = await maybeData(supabase.from('rfq_orders0').select('*').eq('rfq_id', sourceRfqId).limit(1));
+  const resolvedRfqId = rfq0Headers.data?.[0]?.rfq_id || sourceRfqId;
+  if (!(rfq0Items.data ?? []).length && resolvedRfqId) rfq0Items = await maybeData(supabase.from('rfq_order_items0').select('*').eq('rfq_id', resolvedRfqId).order('line_number', { ascending: true }));
 
   const firstError = [
     procurementChain,

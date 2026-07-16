@@ -218,6 +218,14 @@ export default function SupplierRegisterPage() {
         return;
       }
 
+      const canonicalResponse = await fetch('/api/supplier/registration/complete', { method: 'POST' });
+      const canonicalBody = await canonicalResponse.json().catch(() => ({}));
+      if (!canonicalResponse.ok) {
+        setError(canonicalBody.error || 'Supplier relationship could not be created.');
+        setLoading(false);
+        return;
+      }
+
       const role = await getCurrentUserRole(supabase, data.user.id, data.user.user_metadata?.role as string | undefined);
       if (!role) {
         setError('Account role is missing. Please contact support.');

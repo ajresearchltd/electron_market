@@ -2,115 +2,95 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Star } from 'lucide-react';
-import { createClient } from '../../../lib/supabase/client';
+import { loadHomepageContent } from './homepageContent';
 
-type SupplierRow = {
-  supplier_id: string;
-  name: string | null;
-  pic: string | null;
-  delivery_product: string | null;
-  country?: string;
-  rating?: number;
-  products?: string;
+type Supplier = {
+  slug: string;
+  name: string;
+  logoUrl: string | null;
+  description: string | null;
+  country: string | null;
+  specialization: string | null;
 };
 
-const isImagePath = (value: string) => {
-  return value.startsWith('http://') || value.startsWith('https://') || value.startsWith('/');
-};
+const isImageUrl = (value: string | null) => Boolean(
+  value && (value.startsWith('https://') || value.startsWith('http://') || value.startsWith('/'))
+);
 
 export default function TopSuppliersSection() {
-  const [suppliers, setSuppliers] = useState<SupplierRow[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [title, setTitle] = useState('Top Verified Suppliers');
+  const [description, setDescription] = useState('Source directly from certified suppliers with proven fulfillment history.');
 
   useEffect(() => {
     let active = true;
-
-    const loadSuppliers = async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('verified_supplier')
-        .select('supplier_id, name, pic, delivery_product')
-        .order('name', { ascending: true })
-        .limit(4);
-
-      if (!active) {
-        return;
-      }
-
-      if (error || !data || data.length === 0) {
-        if (error) {
-          console.warn('Top Verified Suppliers query failed.', error.message);
-        }
-        return;
-      }
-
-      setSuppliers(data);
-    };
-
-    loadSuppliers();
-
-    return () => {
-      active = false;
-    };
+    fetch('/api/public/suppliers?scope=homepage')
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then((body) => { if (active) setSuppliers(body.suppliers ?? []); })
+      .catch(() => {});
+    loadHomepageContent('section_10_title, section_10_description').then((row) => {
+      if (!active || !row) return;
+      setTitle(row.section_10_title || 'Top Verified Suppliers');
+      setDescription(row.section_10_description || 'Source directly from certified suppliers with proven fulfillment history.');
+    });
+    return () => { active = false; };
   }, []);
 
   return (
     <section id="suppliers" className="bg-white py-8 md:py-10">
       <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
-        <div className="mb-5">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-950">Top Verified Suppliers</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            Source directly from certified suppliers with proven fulfillment history.
-            </p>
-          </div>
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            {description}
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-[minmax(0,1fr)_390px]">
-          <div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-              {suppliers.map((supplier) => {
-                const name = supplier.name || 'Verified Supplier';
-                const pic = supplier.pic?.trim();
-                const supplierId = String(supplier.supplier_id ?? '').trim();
-                if (!supplierId) return null;
+        <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
+          <div className="min-w-0">
+            <div className="category-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-4 touch-pan-x">
+              {suppliers.map((supplier) => (
+                <Link
+                  href={`/suppliers/${encodeURIComponent(supplier.slug)}`}
+                  key={supplier.slug}
+                  className="group flex min-h-[338px] w-[210px] flex-[0_0_210px] snap-start flex-col overflow-hidden rounded-[20px] border border-slate-200 bg-white shadow-md transition hover:-translate-y-1 hover:border-blue-600 hover:bg-blue-600 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 sm:w-[220px] sm:flex-[0_0_220px] lg:w-[calc((100%-2.25rem)/4)] lg:flex-[0_0_calc((100%-2.25rem)/4)]"
+                >
+                  <div className="flex h-32 w-full flex-none items-center justify-center bg-gradient-to-br from-blue-50 to-slate-50 text-2xl font-bold uppercase text-blue-700 ring-1 ring-inset ring-slate-100 group-hover:bg-white">
+                    {isImageUrl(supplier.logoUrl) ? (
+                      <img src={supplier.logoUrl!} alt="" className="h-full w-full object-contain p-4" />
+                    ) : (
+                      supplier.name.slice(0, 2)
+                    )}
+                  </div>
 
-                return (
-                  <Link href={`/suppliers/${encodeURIComponent(supplierId)}`} key={supplierId} className="group flex min-h-[118px] cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition-all duration-200 hover:border-blue-600 hover:bg-blue-600 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2">
-                    <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gradient-to-br from-blue-50 to-slate-50 text-sm font-bold uppercase tracking-wide text-blue-700 ring-1 ring-slate-100 transition-colors duration-200 group-hover:bg-white group-hover:from-white group-hover:to-white">
-                      {pic && isImagePath(pic) ? (
-                        <img src={pic} alt="" className="h-full w-full object-contain p-2" />
-                      ) : (
-                        pic || name.slice(0, 2)
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="truncate text-sm font-bold text-slate-950 transition-colors duration-200 group-hover:text-white">{name}</h3>
-                      {supplier.country && <p className="mt-1 text-xs text-slate-500 transition-colors duration-200 group-hover:text-blue-100">{supplier.country}</p>}
-                      {supplier.rating && (
-                        <div className="mt-2 flex items-center gap-1">
-                          {[...Array(5)].map((_, index) => (
-                            <Star key={index} size={12} className={index < Math.floor(supplier.rating || 0) ? 'fill-yellow-400 text-yellow-400' : 'text-slate-300'} />
-                          ))}
-                          <span className="ml-1 text-xs font-bold text-slate-900 group-hover:text-white">{supplier.rating}</span>
-                        </div>
-                      )}
-                      {supplier.delivery_product && <p className="mt-2 line-clamp-2 text-xs font-medium leading-4 text-slate-600 group-hover:text-blue-50">{supplier.delivery_product}</p>}
-                      {supplier.products && <p className="mt-2 text-xs font-medium text-slate-600 group-hover:text-blue-100">{supplier.products} Products</p>}
-                    </div>
-                  </Link>
-                );
-              })}
+                  <div className="flex flex-1 flex-col p-4">
+                    <span className="inline-flex w-fit rounded-full bg-blue-50 px-2 py-1 text-[11px] font-bold text-blue-700 group-hover:bg-white/15 group-hover:text-white">
+                      Verified
+                    </span>
+                    <h3 className="mt-3 line-clamp-2 text-base font-bold leading-5 text-slate-950 group-hover:text-white">
+                      {supplier.name}
+                    </h3>
+                    {supplier.country && (
+                      <p className="mt-1 text-sm text-slate-500 group-hover:text-blue-100">{supplier.country}</p>
+                    )}
+                    {(supplier.description || supplier.specialization) && (
+                      <p className="mt-3 line-clamp-3 text-sm leading-5 text-slate-600 group-hover:text-blue-50">
+                        {supplier.description || supplier.specialization}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+              ))}
             </div>
 
-            <a href="#suppliers" className="mt-5 inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm shadow-blue-900/10 hover:bg-blue-500">
+            <Link href="/suppliers" className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-5 text-sm font-semibold text-white shadow-sm shadow-blue-900/10 hover:bg-blue-500">
               View all suppliers
-            </a>
+            </Link>
           </div>
 
-          <aside className="flex h-[300px] max-w-[420px] items-center justify-center justify-self-center overflow-hidden rounded-2xl border border-blue-100 bg-[#f4f8ff] p-4 shadow-md shadow-blue-950/5 lg:justify-self-end">
-            <img src="/reference/ver_pro.png" alt="Top verified suppliers" className="max-h-full w-full rounded-xl object-contain" />
-          </aside>
+          <Link href="/suppliers" className="h-[338px] w-full max-w-[420px] justify-self-center overflow-hidden rounded-[20px] border border-slate-200 bg-[#061b3f] shadow-md shadow-blue-950/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 lg:w-[220px] lg:justify-self-end">
+            <img src="/reference/veified_suppliers.png" alt="Top Verified Suppliers — view all verified suppliers" className="h-full w-full object-cover object-center" />
+          </Link>
         </div>
       </div>
     </section>

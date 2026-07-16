@@ -1,5 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+import { loadHomepageContent } from './homepageContent';
+
 const rfqs = [
   { title: 'STM32L476 Microcontroller - 5000 pcs', category: 'Microcontrollers', quantity: '5,000', responses: 8, createdAt: '2 hours ago' },
   { title: 'HDMI Connectors Type-C - 10000 pcs', category: 'Connectors', quantity: '10,000', responses: 12, createdAt: '4 hours ago' },
@@ -8,13 +11,26 @@ const rfqs = [
 ];
 
 export default function RecentRFQSection() {
+  const [title, setTitle] = useState('Recent RFQ Requests');
+  const [description, setDescription] = useState('See the types of sourcing requests flowing through the marketplace.');
+
+  useEffect(() => {
+    let active = true;
+    loadHomepageContent('section_9_title, section_9_description').then((row) => {
+      if (!active || !row) return;
+      setTitle(row.section_9_title || 'Recent RFQ Requests');
+      setDescription(row.section_9_description || 'See the types of sourcing requests flowing through the marketplace.');
+    });
+    return () => { active = false; };
+  }, []);
+
   return (
     <section className="bg-[#f5f8fc] py-8 md:py-10">
       <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
         <div className="mb-5">
-          <h2 className="text-2xl font-bold tracking-tight text-slate-950">Recent RFQ Requests</h2>
+          <h2 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            See the types of sourcing requests flowing through the marketplace.
+            {description}
           </p>
         </div>
 

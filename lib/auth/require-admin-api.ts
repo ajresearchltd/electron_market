@@ -10,5 +10,5 @@ export async function requireAdminApi() {
   if (role !== 'admin') return { error: 'Administrator authorization failed.', status: 403 } as const;
   const admin = createAdminClient();
   if (!admin) return { error: 'Server-side Admin client is not configured.', status: 500 } as const;
-  return { user, admin } as const;
+  return { user, sessionClient, admin } as const;
 }

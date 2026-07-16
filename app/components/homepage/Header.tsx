@@ -1,6 +1,7 @@
 ﻿'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronDown, Menu, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { loadHomepageContent } from './homepageContent';
@@ -41,7 +42,14 @@ export default function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#020b1f]/95 text-white shadow-sm backdrop-blur-xl">
       <div className="mx-auto flex h-14 max-w-[1180px] items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight text-white">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-300/40 bg-blue-600/20 text-cyan-300">E</span>
+          <Image
+            src="/reference/web_logo_em.png"
+            alt="ElectronMarket"
+            width={40}
+            height={40}
+            priority
+            className="h-[34px] w-[34px] shrink-0 object-contain sm:h-[38px] sm:w-[38px]"
+          />
           <span className="leading-none">
             <span>Electron</span><span className="text-cyan-300">Market</span>
             <span className="block text-[10px] font-semibold text-blue-200">Global Components Marketplace</span>

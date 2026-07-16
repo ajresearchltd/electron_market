@@ -14,6 +14,7 @@ type ItemRow = {
   row_number: number | null;
   part_number: string | null;
   normalized_part_number: string | null;
+  manufacturer_part_number: string | null;
   manufacturer: string | null;
   quantity: number | null;
   unit: string | null;
@@ -75,6 +76,11 @@ export default function CustomerBomUploadDetailPage() {
   const [editingPreferences,setEditingPreferences]=useState(false);
   const [savingPreferences,setSavingPreferences]=useState(false);
   const [aiOpen,setAiOpen]=useState(false);
+  const [rfq,setRfq]=useState<{id:string;status:string;navigationUrl:string}|null>(null);
+  const [eligibility,setEligibility]=useState({eligibleCount:0,excludedCount:0,totalCount:0});
+  const [rfqModalOpen,setRfqModalOpen]=useState(false);
+  const [creatingRfq,setCreatingRfq]=useState(false);
+  const [rfqMessage,setRfqMessage]=useState('');
 
   const loadUpload = async () => {
     setLoading(true);
@@ -85,6 +91,8 @@ export default function CustomerBomUploadDetailPage() {
       if (!response.ok) throw new Error(result.error || 'Unable to load BOM upload.');
       setUpload(result.upload as UploadRow);
       setItems((result.items ?? []) as ItemRow[]);
+      setRfq(result.rfq ?? null);
+      setEligibility(result.eligibility ?? {eligibleCount:0,excludedCount:0,totalCount:(result.items ?? []).length});
       const preferenceResponse=await fetch(`/api/customer/bom/${uploadId}/preferences`);const preferenceResult=await preferenceResponse.json();
       if(preferenceResponse.ok){const normalized=normalizeProcurementPreferences(preferenceResult.preferences);setPreferences(normalized);setSavedPreferences(normalized);setCountries((preferenceResult.countries||[]).map((row:any)=>({iso2:String(row.iso2).toUpperCase(),name:String(row.name)})));setPreferenceError('')}
       else setPreferenceError(preferenceResult.error||'Order preferences could not be loaded.');
@@ -123,6 +131,7 @@ export default function CustomerBomUploadDetailPage() {
 
   const savePreferences=async(next=preferences)=>{setSavingPreferences(true);setPreferenceError('');try{const response=await fetch(`/api/customer/bom/${uploadId}/preferences`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(next)});const result=await response.json();if(!response.ok)throw new Error(result.error||'Order preferences could not be saved.');const normalized=normalizeProcurementPreferences(result.preferences);setPreferences(normalized);setSavedPreferences(normalized);setEditingPreferences(false)}catch(e){setPreferenceError(e instanceof Error?e.message:'Order preferences could not be saved.');throw e}finally{setSavingPreferences(false)}};
   const applyAiProposal=async(proposal:Record<string,unknown>)=>{const next=normalizeProcurementPreferences({...preferences,...proposal});await savePreferences(next)};
+  const createRfq=async()=>{setCreatingRfq(true);setRfqMessage('');try{const response=await fetch(`/api/customer/bom/uploads/${uploadId}/create-rfq`,{method:'POST'});const result=await response.json();if(!response.ok)throw new Error(result.error||'The Draft RFQ could not be created.');setRfq({id:result.rfq.id,status:result.rfq.status,navigationUrl:result.navigationUrl});setRfqModalOpen(false);setRfqMessage(result.message||'Draft RFQ created from BOM.');}catch(e){setRfqMessage(e instanceof Error?e.message:'The Draft RFQ could not be created.')}finally{setCreatingRfq(false)}};
 
   const summaryRows=upload?[
     [['Procurement No',upload.procurement_number],['Customer Reference',upload.customer_reference],['Status',humanize(upload.status)]],
@@ -144,7 +153,7 @@ export default function CustomerBomUploadDetailPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/customer/bom-uploads" className={blueButtonClass}>Back to BOM Lists</Link>
-            <button type="button" disabled className="rounded-lg bg-blue-300 px-4 py-2 text-sm font-semibold text-white">Create RFQ from Valid Items - coming soon</button>
+            {rfq?<HubButton href={rfq.navigationUrl}>Open RFQ</HubButton>:<HubButton onClick={()=>setRfqModalOpen(true)} disabled={loading||eligibility.eligibleCount===0}>Create RFQ from BOM</HubButton>}
           </div>
         </div>
 
@@ -153,6 +162,8 @@ export default function CustomerBomUploadDetailPage() {
           {error && <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>}
           {!loading && upload && (
             <>
+              {rfqMessage && <div className={`mb-4 rounded-xl border p-4 text-sm font-semibold ${rfq?'border-emerald-200 bg-emerald-50 text-emerald-800':'border-red-200 bg-red-50 text-red-700'}`}>{rfqMessage}</div>}
+              {!rfq&&eligibility.eligibleCount===0?<div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-800">No eligible BOM items are available. Add a part number and a quantity greater than zero, then correct fatal validation or verification issues.</div>:null}
               <div className="space-y-2 rounded-2xl bg-blue-700 px-5 py-4 text-white shadow-lg">
                 {summaryRows.map((row,index)=><p key={index} className="flex flex-wrap gap-x-2 gap-y-1 text-sm">{row.filter(([,value])=>value!==null&&value!==undefined&&value!=='').map(([label,value],itemIndex)=><span key={String(label)}>{itemIndex>0?<span className="mr-2 text-blue-200">•</span>:null}<b>{label}:</b> {displayValue(value)}</span>)}</p>)}
               </div>
@@ -228,6 +239,7 @@ export default function CustomerBomUploadDetailPage() {
           )}
         </section>
       </div>
+      {rfqModalOpen&&upload?<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-labelledby="create-rfq-title" onMouseDown={(event)=>{if(event.target===event.currentTarget&&!creatingRfq)setRfqModalOpen(false)}}><div className="w-full max-w-xl rounded-2xl border border-blue-200 bg-white p-6 text-slate-900 shadow-2xl"><h2 id="create-rfq-title" className="text-2xl font-bold text-blue-950">Create RFQ from BOM</h2><p className="mt-2 text-sm text-slate-600">Review the source and item totals before creating the Draft RFQ.</p><dl className="mt-5 grid gap-3 sm:grid-cols-2">{[['Procurement number',upload.procurement_number||'-'],['BOM filename',upload.original_file_name||upload.document_name||'-'],['Total BOM items',eligibility.totalCount],['Eligible items',eligibility.eligibleCount],['Excluded items',eligibility.excludedCount],['Initial status','Draft'],['Priority',humanize(preferences.search_priority)],['Maximum lead time',preferences.max_lead_time_days?`${preferences.max_lead_time_days} days`:'No fixed maximum'],['Allowed countries',preferences.supplier_countries.length?preferences.supplier_countries.join(', '):'Any country'],['Independent suppliers',preferences.allow_independent_suppliers?'Allowed':'Not allowed'],['Alternative parts',preferences.allow_alternatives?'Allowed':'Not allowed'],['Split delivery',preferences.allow_split_delivery?'Allowed':'Not allowed'],['Budget',preferences.budget_amount!=null?`${preferences.budget_amount} ${preferences.budget_currency||''}`:'No maximum'],['Certificates',preferences.certificate_requirements||'None specified']].map(([label,value])=><div key={String(label)} className="rounded-xl bg-slate-50 p-3"><dt className="text-xs font-bold uppercase tracking-wide text-slate-500">{label}</dt><dd className="mt-1 break-words text-sm font-semibold">{displayValue(value)}</dd></div>)}</dl><div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900"><b>{eligibility.eligibleCount} items</b> will be added to the RFQ. <b>{eligibility.excludedCount} items</b> will be excluded because they require correction. The existing procurement chain and <b>{upload.procurement_number}</b> will be preserved; no new procurement number will be created.</div>{rfqMessage&&!rfq?<p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{rfqMessage}</p>:null}<div className="mt-6 flex justify-end gap-3"><HubButton onClick={()=>setRfqModalOpen(false)} disabled={creatingRfq}>Cancel</HubButton><HubButton onClick={createRfq} loading={creatingRfq} loadingText="Creating...">Create Draft RFQ</HubButton></div></div></div>:null}
       <ProcurementAiBrief open={aiOpen} onClose={()=>setAiOpen(false)} uploadId={uploadId} onApplyProposal={applyAiProposal}/>
     </main>
   );

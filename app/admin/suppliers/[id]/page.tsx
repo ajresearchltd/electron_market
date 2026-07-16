@@ -1,206 +1,35 @@
 'use client';
+import {useCallback,useEffect,useState} from 'react';
+import {useParams,useRouter} from 'next/navigation';
+import Link from 'next/link';
+import {AdminHeader,AdminShell,SectionCard,humanize} from '../../_components/detailShared';
+import SupplierContactsReview from './SupplierContactsReview';
+const field='w-full rounded-md border border-slate-300 px-3 py-2 text-sm';
+const checks=['company_registration_reviewed','company_identity_confirmed','primary_contact_verified','compliance_review_completed'];
+const profileFields=['company_name','business_registration_number','tax_vat_number','country_name','legal_address','office_address','website','company_phone','company_email','company_description','product_categories_text','years_in_business','employee_count','regions_served','delivery_countries','preferred_currencies','logo_url','cover_image_url','admin_notes'];
+const publicFields=['public_display_name','public_short_description','public_detailed_description','public_city','public_supplier_type','public_brands','public_categories'];
+const call=async(url:string,options?:RequestInit)=>{const r=await fetch(url,options),b=await r.json().catch(()=>({}));if(!r.ok)throw new Error(b.error||'Request failed.');return b};
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { createClient } from '../../../../lib/supabase/client';
-import { AdminHeader, AdminShell, ErrorList, FileLink, formatMoney, formatValue, GenericRow, KeyValueGrid, SectionCard, SimpleTable, humanize } from '../../_components/detailShared';
+export default function Page(){const routeId=useParams<{id:string}>().id,router=useRouter(),[data,setData]=useState<any>(),[tab,setTab]=useState('company'),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState(''),[promote,setPromote]=useState(false);
+ const load=useCallback(async()=>{setLoading(true);setError('');try{const body=await call(`/api/admin/suppliers/${routeId}`,{cache:'no-store'});setData(body);if(body.canonicalSupplierId!==routeId)router.replace(`/admin/suppliers/${body.canonicalSupplierId}`)}catch(e){setError(e instanceof Error?e.message:'Supplier could not be loaded.')}finally{setLoading(false)}},[routeId,router]);useEffect(()=>{load()},[load]);
+ const change=(key:string,value:any)=>setData((d:any)=>({...d,profile:{...d.profile,[key]:value}}));
+ const save=async(status?:string)=>{setSaving(true);try{const b=await call(`/api/admin/suppliers/${data.canonicalSupplierId}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({...data.profile,...(status?{verification_status:status}:{})})});setData((d:any)=>({...d,profile:b.profile}));setSuccess('Supplier review saved.')}catch(e){setError(e instanceof Error?e.message:'Save failed.')}finally{setSaving(false)}};
+ const saveProduct=async(row:any,update:any)=>{setSaving(true);try{const b=await call(`/api/admin/suppliers/${data.canonicalSupplierId}/products/${row.product_id}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({...row,...update})});setData((d:any)=>({...d,structuredProducts:d.structuredProducts.map((x:any)=>x.product_id===b.product.product_id?b.product:x),products:d.products.map((x:any)=>x.product_id===b.product.product_id?b.product:x)}));setSuccess('Product updated.')}catch(e){setError(e instanceof Error?e.message:'Product update failed.')}finally{setSaving(false)}};
+ const importUpload=async(uploadId:string)=>{setSaving(true);try{const b=await call(`/api/admin/suppliers/${data.canonicalSupplierId}/uploads/${uploadId}/import`,{method:'POST'});setSuccess(b.message);await load();setTab('products')}catch(e){setError(e instanceof Error?e.message:'Import failed.')}finally{setSaving(false)}};
+ const promoteNow=async()=>{setPromote(false);setSaving(true);try{await call(`/api/admin/suppliers/${data.canonicalSupplierId}/promote-to-verified`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({settings:{is_public:true}})});await load();setSuccess('Supplier promoted to Verified Supplier.')}catch(e){setError(e instanceof Error?e.message:'Promotion failed.')}finally{setSaving(false)}};
+ if(loading)return <AdminShell><div className="p-8">Loading supplier review…</div></AdminShell>;if(!data)return <AdminShell><div className="p-8 text-red-700">{error}</div></AdminShell>;const p=data.profile,eligible=p.verification_status==='approved'&&Boolean(p.public_display_name||p.company_name);return <AdminShell><AdminHeader eyebrow="Supply HUB Review" title={p.company_name||'Supplier review'} subtitle={`Canonical supplier ${data.canonicalSupplierId}`} status={p.verification_status}/><div className="mx-auto max-w-7xl px-4 py-6">{error&&<Notice red>{error}</Notice>}{success&&<Notice>{success}</Notice>}<div className="mb-5 flex gap-2 overflow-x-auto">{['company','contacts','products','documents','verification','public','administration'].map(x=><button key={x} onClick={()=>setTab(x)} className={`whitespace-nowrap rounded-md px-4 py-2 text-sm font-bold ${tab===x?'bg-blue-700 text-white':'border bg-white'}`}>{humanize(x)}</button>)}</div>
+ {tab==='company'&&<SectionCard title="Registered company information"><Editor fields={profileFields} data={p} change={change}/></SectionCard>}
+ {tab==='contacts'&&<SectionCard title="Private contacts and authorized emails"><SupplierContactsReview supplierId={data.canonicalSupplierId} initialContacts={data.contacts} initialEmails={data.authorizedEmails} onMessage={(kind:string,message:string)=>kind==='error'?setError(message):setSuccess(message)}/></SectionCard>}
+ {tab==='products'&&<Products data={data} saving={saving} importUpload={importUpload} saveProduct={saveProduct}/>} 
+ {tab==='documents'&&<SectionCard title="Registration documents"><Simple heads={['Document','Type','File','Status','Uploaded']} rows={data.documents.map((d:any)=>[d.document_title,d.document_type,d.file_name,d.document_status,d.uploaded_at?new Date(d.uploaded_at).toLocaleDateString():'—'])}/></SectionCard>}
+ {tab==='verification'&&<SectionCard title="Verification checklist"><div className="grid gap-3 sm:grid-cols-2">{checks.map(k=><label key={k} className="flex gap-2 rounded border p-3"><input type="checkbox" checked={!!p.verification_checklist?.[k]} onChange={e=>change('verification_checklist',{...p.verification_checklist,[k]:e.target.checked})}/>{humanize(k)}</label>)}</div><textarea className={`${field} mt-4`} value={p.decision_reason||''} onChange={e=>change('decision_reason',e.target.value)}/><div className="mt-4 flex flex-wrap gap-2"><Action onClick={()=>save('in_review')}>Start review</Action><Action onClick={()=>save('needs_update')}>Request information</Action><Action onClick={()=>save('approved')}>Approve supplier</Action><Action onClick={()=>save('rejected')}>Reject supplier</Action></div></SectionCard>}
+ {tab==='public'&&<SectionCard title="Approved public profile"><Editor fields={publicFields} data={p} change={change}/>{data.verifiedSupplier?<Link href={`/suppliers/${data.verifiedSupplier.public_slug}`} className="mt-4 inline-block font-bold text-blue-700">Open public profile →</Link>:<p className="mt-4 rounded bg-amber-50 p-3">The public snapshot is created on promotion.</p>}</SectionCard>}
+ {tab==='administration'&&<SectionCard title="Administration"><p>Verification version: {p.verification_version}</p><p className="mt-2">Products count means active structured products; uploads use the separate counts shown in Products.</p>{!data.verifiedSupplier&&<div className="mt-5"><Action primary onClick={()=>setPromote(true)} disabled={!eligible}>Promote to Verified Supplier</Action>{!eligible&&<ul className="mt-3 list-disc pl-5 text-sm text-amber-800">{p.verification_status!=='approved'&&<li>Approved verification status is required.</li>}{!(p.public_display_name||p.company_name)&&<li>A company/public display name is required.</li>}</ul>}{data.counts.approvedProductCount===0&&<p className="mt-3 text-sm text-amber-800">No approved public products will currently appear on this supplier profile.</p>}</div>}<h3 className="mt-6 font-bold">Audit history</h3>{data.auditLog.map((a:any)=><div key={a.id} className="border-b py-2 text-sm">{new Date(a.created_at).toLocaleString()} — {humanize(a.action)}</div>)}</SectionCard>}
+ <div className="mt-5 flex justify-end"><Action primary onClick={()=>save()}>{saving?'Saving…':'Save changes'}</Action></div></div>{promote&&<Confirm cancel={()=>setPromote(false)} confirm={promoteNow}/>}</AdminShell>}
 
-const ASSIGNMENTS_TABLE = 'rfq_supplier_assignments';
-const DEFAULT_DOCUMENTS_BUCKET = 'supplier-company-documents';
-
-export default function AdminSupplierDetailPage() {
-  const params = useParams<{ id: string }>();
-  const supplierProfileId = params.id;
-  const supabase = useMemo(() => createClient(), []);
-  const [loading, setLoading] = useState(true);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [profile, setProfile] = useState<GenericRow | null>(null);
-  const [contacts, setContacts] = useState<GenericRow[]>([]);
-  const [documents, setDocuments] = useState<GenericRow[]>([]);
-  const [assignments, setAssignments] = useState<GenericRow[]>([]);
-  const [rfqs, setRfqs] = useState<GenericRow[]>([]);
-  const [orders, setOrders] = useState<GenericRow[]>([]);
-
-  useEffect(() => {
-    const loadSupplier = async () => {
-      setLoading(true);
-      setErrors([]);
-
-      const nextErrors: string[] = [];
-      const profileResult = await supabase
-        .from('supplier_company_profiles')
-        .select('*')
-        .eq('profile_id', supplierProfileId)
-        .maybeSingle();
-
-      if (profileResult.error) {
-        nextErrors.push(`supplier_company_profiles: ${profileResult.error.message}`);
-        setProfile(null);
-        setLoading(false);
-        setErrors(nextErrors);
-        return;
-      }
-
-      const supplierProfile = (profileResult.data ?? null) as GenericRow | null;
-      setProfile(supplierProfile);
-
-      if (!supplierProfile) {
-        setLoading(false);
-        return;
-      }
-
-      const supplierUserId = String(supplierProfile.user_id || '');
-      const [
-        contactsResult,
-        documentsResult,
-        assignmentsResult,
-        ordersResult,
-      ] = await Promise.all([
-        supabase.from('supplier_company_contacts').select('*').eq('profile_id', supplierProfileId).order('contact_index', { ascending: true }),
-        supabase.from('supplier_company_documents').select('*').eq('profile_id', supplierProfileId).order('document_slot', { ascending: true }),
-        supabase.from(ASSIGNMENTS_TABLE).select('*').eq('supplier_id', supplierUserId).order('assigned_at', { ascending: false }),
-        supabase.from('active_orders').select('*').eq('supplier_id', supplierUserId).order('created_at', { ascending: false }),
-      ]);
-
-      if (contactsResult.error) nextErrors.push(`supplier_company_contacts: ${contactsResult.error.message}`);
-      if (documentsResult.error) nextErrors.push(`supplier_company_documents: ${documentsResult.error.message}`);
-      if (assignmentsResult.error) nextErrors.push(`${ASSIGNMENTS_TABLE}: ${assignmentsResult.error.message}`);
-      if (ordersResult.error) nextErrors.push(`active_orders: ${ordersResult.error.message}`);
-
-      const assignmentRows = (assignmentsResult.data ?? []) as GenericRow[];
-      const rfqIds = Array.from(new Set(assignmentRows.map((assignment) => String(assignment.rfq_id || '')).filter(Boolean)));
-      let rfqRows: GenericRow[] = [];
-      if (rfqIds.length > 0) {
-        const rfqResult = await supabase.from('rfq_orders0').select('*').in('rfq_id', rfqIds).order('created_at', { ascending: false });
-        if (rfqResult.error) nextErrors.push(`rfq_orders0: ${rfqResult.error.message}`);
-        rfqRows = (rfqResult.data ?? []) as GenericRow[];
-      }
-
-      const documentRows = (documentsResult.data ?? []) as GenericRow[];
-      const documentsWithSignedUrls = await Promise.all(
-        documentRows.map(async (documentRow) => {
-          const storagePath = String(documentRow.storage_path || '');
-          if (!storagePath) return documentRow;
-
-          const storageBucket = String(documentRow.storage_bucket || DEFAULT_DOCUMENTS_BUCKET);
-          const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-            .from(storageBucket)
-            .createSignedUrl(storagePath, 60 * 10);
-
-          if (signedUrlError) {
-            nextErrors.push(`supplier document storage (${documentRow.file_name || documentRow.document_title || storagePath}): ${signedUrlError.message}`);
-            return documentRow;
-          }
-
-          return { ...documentRow, signed_url: signedUrlData?.signedUrl || '' };
-        })
-      );
-
-      setContacts((contactsResult.data ?? []) as GenericRow[]);
-      setDocuments(documentsWithSignedUrls);
-      setAssignments(assignmentRows);
-      setRfqs(rfqRows);
-      setOrders((ordersResult.data ?? []) as GenericRow[]);
-      setErrors(nextErrors);
-      setLoading(false);
-    };
-
-    loadSupplier();
-  }, [supplierProfileId, supabase]);
-
-  const assignmentByRfq = useMemo(() => new Map(assignments.map((assignment) => [String(assignment.rfq_id), assignment])), [assignments]);
-  const companyName = String(profile?.company_name || 'Supplier Detail');
-  const subtitle = [
-    profile?.main_contact_name,
-    profile?.company_email || profile?.main_contact_email,
-    profile?.country_name,
-  ].filter(Boolean).map(String).join(' | ');
-
-  return (
-    <AdminShell>
-      <AdminHeader eyebrow="Supplier Detail" title={companyName} subtitle={subtitle} status={String(profile?.verification_status || '')} />
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        {loading && <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-800">Loading supplier detail...</div>}
-        <ErrorList errors={errors} />
-
-        <SectionCard title="Overview">
-          <div className="grid gap-3 md:grid-cols-4">
-            <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-semibold uppercase text-slate-500">Company</p><p className="mt-1 font-bold">{formatValue(profile?.company_name)}</p></div>
-            <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-semibold uppercase text-slate-500">Main Contact</p><p className="mt-1 font-bold">{formatValue(profile?.main_contact_name)}</p></div>
-            <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-semibold uppercase text-slate-500">Email</p><p className="mt-1 font-bold">{formatValue(profile?.company_email || profile?.main_contact_email)}</p></div>
-            <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs font-semibold uppercase text-slate-500">Country</p><p className="mt-1 font-bold">{formatValue(profile?.country_name)}</p></div>
-          </div>
-        </SectionCard>
-
-        <SectionCard title="Related RFQs">
-          <SimpleTable
-            rows={rfqs}
-            emptyText="No RFQs found for this supplier."
-            columns={[
-              { key: 'order_number', label: 'Order' },
-              { key: 'rfq_id', label: 'RFQ ID' },
-              { key: 'customer_company_name', label: 'Buyer' },
-              { key: 'rfq_status', label: 'RFQ Status', render: (row) => humanize(row.rfq_status) },
-              { key: 'assignment_status', label: 'Assignment', render: (row) => humanize(assignmentByRfq.get(String(row.rfq_id))?.assignment_status) },
-              { key: 'deadline_at', label: 'Deadline' },
-              { key: 'created_at', label: 'Created' },
-            ]}
-          />
-        </SectionCard>
-
-        <SectionCard title="Active Orders">
-          <SimpleTable
-            rows={orders}
-            emptyText="No active orders found."
-            columns={[
-              { key: 'order_number', label: 'Order' },
-              { key: 'customer_company_name', label: 'Buyer' },
-              { key: 'order_status', label: 'Status', render: (row) => humanize(row.order_status) },
-              { key: 'current_stage', label: 'Stage', render: (row) => humanize(row.current_stage) },
-              { key: 'order_total', label: 'Total', render: (row) => formatMoney(row.order_total, row.currency) },
-              { key: 'expected_delivery_at', label: 'Expected Delivery' },
-              { key: 'updated_at', label: 'Updated' },
-            ]}
-          />
-        </SectionCard>
-
-        <SectionCard title="Uploaded Files / Documents">
-          <SimpleTable
-            rows={documents}
-            emptyText="No uploaded documents found."
-            columns={[
-              { key: 'document_title', label: 'Document' },
-              { key: 'document_type', label: 'Type', render: (row) => humanize(row.document_type) },
-              { key: 'file_name', label: 'File', render: (row) => <FileLink row={row} /> },
-              { key: 'file_mime_type', label: 'MIME' },
-              { key: 'file_size_bytes', label: 'Size' },
-              { key: 'document_status', label: 'Status', render: (row) => humanize(row.document_status) },
-              { key: 'uploaded_at', label: 'Uploaded' },
-            ]}
-          />
-        </SectionCard>
-
-        <SectionCard title="Supplier Company Profile Information">
-          <KeyValueGrid row={profile} />
-        </SectionCard>
-
-        <SectionCard title="Supplier Contacts">
-          <SimpleTable
-            rows={contacts}
-            emptyText="No contacts found."
-            columns={[
-              { key: 'contact_index', label: 'Index' },
-              { key: 'contact_name', label: 'Name' },
-              { key: 'contact_position', label: 'Position' },
-              { key: 'contact_email', label: 'Email' },
-              { key: 'contact_phone', label: 'Phone' },
-              { key: 'contact_whatsapp', label: 'WhatsApp' },
-              { key: 'contact_notes', label: 'Notes' },
-              { key: 'created_at', label: 'Created' },
-            ]}
-          />
-        </SectionCard>
-      </div>
-    </AdminShell>
-  );
-}
+function Products({data,saving,importUpload,saveProduct}:any){const[selected,setSelected]=useState(data.productUploads[0]?.id||'');const rows=data.uploadedItems.filter((x:any)=>x.upload_id===selected);return <div className="space-y-6"><SectionCard title="A. Uploaded product lists"><Simple heads={['Upload','Document','Original filename','Created','Rows','Valid','Errors','Status','AI','Mapping','Items','Actions']} rows={data.productUploads.map((u:any)=>[u.upload_number,u.document_name,u.original_file_name,new Date(u.created_at).toLocaleDateString(),u.total_rows,u.valid_rows,u.error_rows,humanize(u.status),humanize(u.ai_processing_status),humanize(u.column_mapping_status),data.uploadedItems.filter((x:any)=>x.upload_id===u.id).length,<div key={u.id} className="flex gap-2"><button className="text-blue-700" onClick={()=>setSelected(u.id)}>View products</button><button disabled={saving} className="text-emerald-700" onClick={()=>importUpload(u.id)}>Import valid products</button></div>])}/></SectionCard><SectionCard title="B. Products from uploaded lists">{selected?<Simple heads={['Row','Part number','Manufacturer','SKU','Product','Qty','MOQ','Price','Lead time','Validation','Import']} rows={rows.map((r:any)=>[r.row_number,r.part_number,r.manufacturer,r.supplier_sku,r.product_name,r.available_quantity,r.moq,r.unit_price!=null?`${r.unit_price} ${r.currency||''}`:'—',r.lead_time,humanize(r.validation_status),r.created_product_id?'Imported':humanize(r.import_status)])}/>:<p className="p-4 text-slate-500">Select an uploaded list.</p>}</SectionCard><SectionCard title="C. Structured supplier products"><Simple heads={['Product','Brand','Part number','Category','Review','Active','Public','Actions']} rows={data.structuredProducts.map((r:any)=>[r.product_name,r.brand_manufacturer,r.part_number_mpn,r.category||r.product_type,humanize(r.review_status),r.product_status==='active'?'Active':'Inactive',r.is_public?'Published':'Private',<div key={r.product_id} className="flex gap-2"><button onClick={()=>saveProduct(r,{review_status:'approved',is_public:false})}>Approve</button><button className="text-emerald-700" onClick={()=>saveProduct(r,{review_status:'approved',product_status:'active',is_public:true})}>Publish</button><button onClick={()=>saveProduct(r,{review_status:'inactive',product_status:'inactive',is_public:false})}>Deactivate</button><button className="text-red-700" onClick={()=>saveProduct(r,{review_status:'rejected',is_public:false,review_reason:'Rejected during Admin review'})}>Reject</button></div>])} empty="No structured products are linked to this supplier."/></SectionCard></div>}
+function Editor({fields,data,change}:any){return <div className="grid gap-4 sm:grid-cols-2">{fields.map((k:string)=><label key={k}><span className="text-xs font-bold uppercase text-slate-500">{humanize(k)}</span>{k.includes('description')||k==='admin_notes'?<textarea className={field} value={data[k]??''} onChange={e=>change(k,e.target.value)}/>:<input className={field} value={data[k]??''} onChange={e=>change(k,e.target.value)}/>}</label>)}</div>}
+function Simple({heads,rows,empty='No records found.'}:any){return <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead><tr>{heads.map((h:string)=><th key={h} className="border-b p-3">{h}</th>)}</tr></thead><tbody>{rows.length?rows.map((r:any[],i:number)=><tr key={i}>{r.map((v,j)=><td key={j} className="border-b p-3">{v??'—'}</td>)}</tr>):<tr><td colSpan={heads.length} className="p-8 text-center text-slate-500">{empty}</td></tr>}</tbody></table></div>}
+function Action({children,onClick,primary=false,disabled=false}:any){return <button type="button" disabled={disabled} onClick={onClick} className={`rounded-md border px-4 py-2 text-sm font-bold disabled:cursor-not-allowed disabled:opacity-50 ${primary?'bg-indigo-900 text-white':'bg-white text-blue-800'}`}>{children}</button>}
+function Notice({children,red=false}:any){return <div className={`mb-4 rounded p-3 ${red?'bg-red-50 text-red-700':'bg-emerald-50 text-emerald-700'}`}>{children}</div>}
+function Confirm({cancel,confirm}:any){return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4"><div className="max-w-lg rounded-xl bg-white p-6"><h2 className="text-xl font-bold">Promote to Verified Supplier?</h2><p className="mt-3 text-sm text-slate-600">This creates or updates one public snapshot linked to the canonical supplier.</p><div className="mt-6 flex justify-end gap-2"><Action onClick={cancel}>Cancel</Action><Action primary onClick={confirm}>Promote</Action></div></div></div>}

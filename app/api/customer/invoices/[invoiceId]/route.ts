@@ -1,0 +1,5 @@
+import {NextResponse} from 'next/server';
+import {createClient} from '../../../../../lib/supabase/server';
+import {createAdminClient} from '../../../../../lib/supabase/admin';
+import {invoiceDetails} from '../../../../../lib/invoices/server';
+export async function GET(_:Request,{params}:{params:Promise<{invoiceId:string}>}){const session=await createClient();const {data:{user}}=await session.auth.getUser();if(!user)return NextResponse.json({error:'Authentication required.'},{status:401});const role=await session.from('user_profiles').select('role').eq('id',user.id).maybeSingle();if(role.data?.role!=='customer')return NextResponse.json({error:'Customer authorization is required.'},{status:403});const db=createAdminClient();if(!db)return NextResponse.json({error:'Invoice service is unavailable.'},{status:503});try{const data=await invoiceDetails(db,(await params).invoiceId,'customer',user.id);return data?NextResponse.json(data):NextResponse.json({error:'Invoice not found.'},{status:404})}catch(error){console.error('Customer Invoice detail failed:',error);return NextResponse.json({error:'Invoice details could not be loaded.'},{status:500})}}

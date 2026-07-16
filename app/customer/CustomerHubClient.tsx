@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import AiOrderChatModal from '../components/ai/AiOrderChatModal';
 import HubButton from '../components/ui/HubButton';
+import InvoiceHubTable from '../components/invoices/InvoiceHubTable';
 import { createClient } from '../../lib/supabase/client';
 
 type GenericRow = Record<string, any>;
@@ -218,10 +219,12 @@ function DataTable({
   columns,
   rows,
   emptyText,
+  onRowActivate,
 }: {
   columns: Array<{ key: string; label: string; render?: (row: GenericRow) => React.ReactNode }>;
   rows: GenericRow[];
   emptyText: string;
+  onRowActivate?: (row: GenericRow) => void;
 }) {
   return (
     <div className="max-w-full overflow-x-auto rounded-xl border border-slate-200">
@@ -243,7 +246,7 @@ function DataTable({
               </td>
             </tr>
           ) : rows.map((row, index) => (
-            <tr key={String(row.id ?? row.rfq_id ?? row.quote_id ?? row.order_number ?? row.file_name ?? index)} className="hover:bg-blue-50/50">
+            <tr key={String(row.id ?? row.rfq_id ?? row.quote_id ?? row.order_number ?? row.file_name ?? index)} role={onRowActivate?'link':undefined} tabIndex={onRowActivate?0:undefined} onClick={()=>onRowActivate?.(row)} onKeyDown={event=>{if(onRowActivate&&(event.key==='Enter'||event.key===' ')){event.preventDefault();onRowActivate(row)}}} className={`${onRowActivate?'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ':''}hover:bg-blue-50/50`}>
               {columns.map((column) => (
                 <td key={column.key} className="px-4 py-3 text-slate-700">
                   {column.render ? column.render(row) : formatValue(row[column.key])}
@@ -381,17 +384,17 @@ export default function CustomerHubPage() {
         ? supabase.from('supplier_quotes0').select('*').in('order_number', orderNumbers).order('created_at', { ascending: false }).limit(30)
         : Promise.resolve({ data: [], error: null });
       const messageQuery = rfqIds.length > 0
-        ? supabase.from('rfq_messages').select('*').in('rfq_id', rfqIds).order('created_at', { ascending: false }).limit(20)
+        ? supabase.from('rfq_messages').select('message_id,rfq_id,supplier_id,sender_user_id,receiver_user_id,message_subject,message_text,message_status,sent_date,read_date').in('rfq_id', rfqIds).order('sent_date', { ascending: false }).limit(20)
         : Promise.resolve({ data: [], error: null });
 
       const [quoteResult, messageResult] = await Promise.all([quoteQuery, messageQuery]);
       if (!active) return;
 
       addError('Supplier Quotes', quoteResult.error?.message);
-      addError('Messages', messageResult.error?.message);
+      if (messageResult.error) console.error('Customer Messages query failed.', { code: messageResult.error.code });
 
       setQuotes((quoteResult.data ?? []) as GenericRow[]);
-      setMessages((messageResult.data ?? []) as GenericRow[]);
+      setMessages(((messageResult.data ?? []) as GenericRow[]).map((message) => ({ ...message, messageTimestamp: message.sent_date })));
       setLoading(false);
     };
 
@@ -514,11 +517,14 @@ export default function CustomerHubPage() {
           </div>
         </SectionCard>
 
+        <InvoiceHubTable role="customer" title="Invoices" />
+
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <SectionCard title="RFQ" className="order-2">
             <DataTable
               rows={rfqs}
               emptyText="No RFQs yet."
+              onRowActivate={(row)=>{if(row.rfq_id)window.location.href=`/customer/rfqs/${encodeURIComponent(String(row.rfq_id))}`}}
               columns={[
                 { key: 'order_number', label: 'RFQ No', render: (row) => <span className="font-semibold text-slate-950">{formatValue(row.order_number)}</span> },
                 { key: 'rfq_name', label: 'RFQ Name', render: (row) => formatValue(row.rfq_name || row.category_name || row.buyer_notes || row.order_number) },
@@ -535,8 +541,8 @@ export default function CustomerHubPage() {
                     const quoteCount = quotes.filter((quote) => quote.order_number === row.order_number).length;
                     return (
                       <div className="flex flex-wrap gap-2">
-                        <Link href={`/create-request?rfq=${encodeURIComponent(String(row.rfq_id || row.order_number || ''))}`} className={actionButtonClass}>View</Link>
-                        {String(row.rfq_status || '').toLowerCase() === 'draft' && <Link href={`/create-request?rfq=${encodeURIComponent(String(row.rfq_id || ''))}&mode=edit`} className={actionButtonClass}>Edit</Link>}
+                        <Link href={`/customer/rfqs/${encodeURIComponent(String(row.rfq_id || ''))}`} onClick={(event)=>event.stopPropagation()} className={actionButtonClass}>View</Link>
+                        {String(row.rfq_status || '').toLowerCase() === 'draft' && <Link href={`/create-request?rfq=${encodeURIComponent(String(row.rfq_id || ''))}&mode=edit`} onClick={(event)=>event.stopPropagation()} className={actionButtonClass}>Edit</Link>}
                         {quoteCount > 0 && <a href="#supplier-quotes" className={actionButtonClass}>Compare Quotes</a>}
                       </div>
                     );

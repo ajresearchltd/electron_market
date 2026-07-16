@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getProcurementChainOverviewById, type ProcurementChainDocumentSummary } from '../../../../lib/procurement-documents/document-chain';
 import { createClient } from '../../../../lib/supabase/server';
+import AdminBomRfqAction from './AdminBomRfqAction';
 
 type PageProps = {
   params: Promise<{
@@ -34,6 +35,13 @@ const displayValue = (value: unknown) => {
   return String(value);
 };
 
+const isEligibleBomItem = (item: any) => {
+  const partNumber = String(item.manufacturer_part_number || item.normalized_part_number || item.part_number || '').trim();
+  const fatalStatuses = new Set(['invalid','error','failed','needs_review','warning']);
+  const invalidChecks = new Set(['not_found','invalid_format','error','needs_review','ambiguous','manufacturer_mismatch','suspicious_format']);
+  return Boolean(partNumber) && Number(item.quantity) > 0 && (item.validation_errors ?? []).length === 0 && !fatalStatuses.has(String(item.validation_status || 'pending').toLowerCase()) && !invalidChecks.has(String(item.part_number_check_status || 'not_checked').toLowerCase());
+};
+
 const humanize = (value: unknown) => displayValue(value).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 
 function ErrorPanel({ title, message }: { title: string; message: string }) {
@@ -41,7 +49,7 @@ function ErrorPanel({ title, message }: { title: string; message: string }) {
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-950">
       <div className="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-white p-6 shadow-sm">
         <Link href="/admin" className="inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 hover:text-white">
-          Back to Admin Control Center
+          Back to Admin HUB
         </Link>
         <h1 className="mt-5 text-2xl font-bold">{title}</h1>
         <p className="mt-3 text-sm text-red-600">{message}</p>
@@ -126,7 +134,7 @@ function DocumentSection({ summary, chain, procurementNumber }: { summary: Procu
   const items = documentItems(summary, chain);
 
   return (
-    <section className={sectionClass}>
+    <section id={summary.type.toLowerCase()} className={sectionClass}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-blue-700">{summary.label}</h2>
@@ -197,6 +205,7 @@ export default async function ProcurementProgressDetailsPage({ params }: PagePro
   if (!overview || (!overview.progress && !overview.procurementChain && !overview.procurementCase && !overview.documents.some((document) => document.exists))) {
     return <ErrorPanel title="Procurement chain not found" message={`No procurement chain was found for id ${chainId}.`} />;
   }
+  const { data: orderPreferences } = await supabase.from('procurement_order_preferences').select('*').eq('procurement_chain_id', chainId).maybeSingle();
 
   const progress = overview.progress ?? {};
   const procurementChain = overview.procurementChain ?? overview.procurementCase ?? {};
@@ -217,7 +226,7 @@ export default async function ProcurementProgressDetailsPage({ params }: PagePro
             <div className="flex flex-wrap items-center gap-3">
               {profile?.email && <span className="max-w-[240px] truncate text-sm font-semibold text-blue-100">{profile.email}</span>}
               <Link href="/admin" className="inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 hover:text-white">
-                Back to Admin Control Center
+                Back to Admin HUB
               </Link>
             </div>
           </div>
@@ -266,6 +275,7 @@ export default async function ProcurementProgressDetailsPage({ params }: PagePro
                   <div className="flex justify-between gap-3"><dt>Table</dt><dd className="font-semibold text-slate-900">{document.tableName}</dd></div>
                   <div className="flex justify-between gap-3"><dt>File</dt><dd className="font-semibold text-slate-900">{document.header?.original_file_name || document.header?.file_name || document.header?.file_path ? 'Available' : 'Not available'}</dd></div>
                 </dl>
+                {document.exists&&document.type==='RFQ'&&document.header?.rfq_id?<Link href={`/admin/rfqs/${document.header.rfq_id}`} className="mt-3 inline-flex rounded-md bg-blue-700 px-3 py-2 text-xs font-bold text-white">Open RFQ</Link>:document.exists&&document.type==='BOM'?<div className="flex flex-wrap gap-2"><a href="#bom" className="mt-3 inline-flex rounded-md border border-blue-700 px-3 py-2 text-xs font-bold text-blue-700">Open BOM</a><AdminBomRfqAction upload={document.header} preferences={orderPreferences} eligibility={{totalCount:overview.chain.bom.items.length,eligibleCount:overview.chain.bom.items.filter(isEligibleBomItem).length}} existingRfqId={overview.documents.find((entry)=>entry.type==='RFQ')?.header?.rfq_id}/></div>:null}
               </div>
             ))}
           </div>

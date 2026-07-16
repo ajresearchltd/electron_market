@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import * as XLSX from 'xlsx';
 import { createOpenAIClient, extractResponseText, loadAiConfig, resolveOpenAIKey } from '../../../../lib/ai/config';
 import { createClient } from '../../../../lib/supabase/server';
+import { createAdminClient } from '../../../../lib/supabase/admin';
+import { getCanonicalSupplierForAuthenticatedUser } from '../../../../lib/suppliers/canonical';
 
 const requiredFields = [
   'documentName',
@@ -270,40 +272,14 @@ export async function POST(request: NextRequest) {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData.user) return jsonError('You must be signed in as a supplier to upload a product list.', 401);
 
-  const { data: profile } = await supabase
-    .from('supplier_company_profiles')
-    .select('company_name, company_email, company_phone, main_contact_name, country_name')
-    .eq('user_id', authData.user.id)
-    .maybeSingle();
-  const supplierEmail = profile?.company_email || authData.user.email || String(form.contactEmail || '');
-  const companyName = profile?.company_name || String(form.supplierCompanyName || 'Supplier Account');
-  let supplierId = '';
-  if (supplierEmail) {
-    const { data: byEmail } = await supabase.from('suppliers').select('supplier_id').eq('contact_email', supplierEmail).maybeSingle();
-    supplierId = byEmail?.supplier_id || '';
-  }
-  if (!supplierId) {
-    const { data: byCompany } = await supabase.from('suppliers').select('supplier_id').eq('company_name', companyName).maybeSingle();
-    supplierId = byCompany?.supplier_id || '';
-  }
-  if (!supplierId) {
-    const { data, error } = await supabase
-      .from('suppliers')
-      .insert({
-        supplier_name: companyName,
-        company_name: companyName,
-        contact_email: supplierEmail || null,
-        email: supplierEmail || null,
-        contact_phone: profile?.company_phone || form.contactPhone || null,
-        contact_person: profile?.main_contact_name || form.contactPerson || null,
-        country: profile?.country_name || form.supplierCountry || null,
-        supplier_status: 'active',
-      })
-      .select('supplier_id')
-      .single();
-    if (error) return jsonError(`Supplier profile: ${error.message}`, 500);
-    supplierId = data.supplier_id;
-  }
+  const admin = createAdminClient();
+  if (!admin) return jsonError('Supplier relationship could not be resolved.', 503);
+  let canonical;
+  try { canonical = await getCanonicalSupplierForAuthenticatedUser(admin, authData.user); }
+  catch (error) { console.error('Canonical supplier upload resolution failed:', error); return jsonError('Supplier relationship could not be resolved.', 409); }
+  if (!canonical) return jsonError('Supplier profile is not linked to a canonical supplier.', 409);
+  if (!['active','approved','verified'].includes(String(canonical.supplier.supplier_status || canonical.profile.verification_status || '').toLowerCase())) return jsonError('This supplier profile is inactive or is not authorized to upload products.', 403);
+  const supplierId = canonical.canonicalSupplierId;
 
   const storagePath = `supplier-stock-uploads/${authData.user.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
   const { error: uploadError } = await supabase.storage.from('supplier-stock-uploads').upload(storagePath, file, {
