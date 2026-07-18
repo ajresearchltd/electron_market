@@ -7,6 +7,8 @@ import { createClient } from '../../lib/supabase/client';
 import HubButton from '../components/ui/HubButton';
 import DeleteRfqButton from './rfqs/DeleteRfqButton';
 import InvoiceHubTable from '../components/invoices/InvoiceHubTable';
+import PreliminaryOrdersDashboardSection from '../components/admin/PreliminaryOrdersDashboardSection';
+import AdminHubTableViewport from '../components/admin/AdminHubTableViewport';
 
 type StageKey =
   | 'bom_received'
@@ -639,7 +641,7 @@ function AiConversationsModal({ supabase, onClose }: { supabase: ReturnType<type
         {!loadingSessions && !sessionError && sessions.length === 0 && <div className="rounded-xl border border-slate-200 bg-white px-4 py-5 text-sm text-slate-600">No AI conversations found.</div>}
 
         {sessions.length > 0 && (
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <AdminHubTableViewport label="Procurement Progress">
             <table className="min-w-[1360px] table-fixed text-left text-sm">
               <colgroup>
                 <col className="w-20" />
@@ -681,7 +683,7 @@ function AiConversationsModal({ supabase, onClose }: { supabase: ReturnType<type
                 ))}
               </tbody>
             </table>
-          </div>
+          </AdminHubTableViewport>
         )}
       </div>
     </Modal>
@@ -1977,7 +1979,7 @@ export default function AdminControlCenterPage() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-slate-900">
-      <header className="bg-[#071b3a] px-4 py-4 text-white shadow-md sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-[80] bg-[#071b3a] px-4 py-4 text-white shadow-lg sm:px-6 lg:px-8">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">Electron Market</p>
@@ -2000,6 +2002,7 @@ export default function AdminControlCenterPage() {
               <p className="max-w-48 truncate text-xs text-blue-100">{adminHeaderProfile.companyName}</p>
               {headerError && <p className="max-w-64 text-xs text-amber-200">{headerError}</p>}
             </div>
+            <Link href="/admin/preliminary-orders" className="admin-primary-button admin-primary-button-compact">Preliminary Orders</Link>
             <Link href="/" className="admin-primary-button admin-primary-button-compact">Home</Link>
             <button type="button" onClick={signOutAdmin} className="admin-primary-button admin-primary-button-compact">Sign out</button>
           </div>
@@ -2025,7 +2028,7 @@ export default function AdminControlCenterPage() {
         </section>
 
         <SectionCard title="Procurement Progress">
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
+          <AdminHubTableViewport label="Latest RFQs">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-blue-600 text-white">
                 <tr>
@@ -2088,7 +2091,7 @@ export default function AdminControlCenterPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </AdminHubTableViewport>
         </SectionCard>
 
         <SectionCard
@@ -2134,14 +2137,14 @@ export default function AdminControlCenterPage() {
           </div>
         </SectionCard>
 
-        <InvoiceHubTable role="admin" title="Latest Invoices" />
+        <InvoiceHubTable role="admin" title="Latest Invoices" adminHubViewport />
 
         <div className="grid gap-6 xl:grid-cols-2">
           <SectionCard
             title="Latest Suppliers"
             action={<button type="button" onClick={() => setShowCreateSupplier(true)} className="admin-primary-button admin-primary-button-compact">Add Supplier</button>}
           >
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <AdminHubTableViewport label="Latest Suppliers">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-blue-600 text-white">
                   <tr>{['Registered', 'Company', 'Country', 'Registration Email', 'Profile', 'Documents', 'Verification', 'Action'].map((heading) => <th key={heading} className={tableHeaderCellClass}>{heading}</th>)}</tr>
@@ -2169,14 +2172,14 @@ export default function AdminControlCenterPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </AdminHubTableViewport>
           </SectionCard>
 
           <SectionCard
             title="Latest Customers"
             action={<button type="button" onClick={() => setShowCreateCustomer(true)} className="admin-primary-button admin-primary-button-compact">Add Customer</button>}
           >
-            <div className="overflow-x-auto rounded-xl border border-slate-200">
+            <AdminHubTableViewport label="Latest Customers">
               <table className="min-w-full text-left text-sm">
                 <thead className="bg-blue-600 text-white">
                   <tr>{['Company', 'Country', 'Contact', 'Recent RFQs', 'Status', 'Action'].map((heading) => <th key={heading} className={tableHeaderCellClass}>{heading}</th>)}</tr>
@@ -2202,9 +2205,11 @@ export default function AdminControlCenterPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </AdminHubTableViewport>
           </SectionCard>
         </div>
+
+        <PreliminaryOrdersDashboardSection />
 
         <div className="grid gap-6 lg:grid-cols-4">
           <SectionCard title="Pending Verification Queue">
@@ -2238,6 +2243,7 @@ export default function AdminControlCenterPage() {
                 { label: 'Supplier Inbox', href: '/admin/supplier-inbox' },
                 { label: 'Discount Prices', href: '/admin/discount-prices' },
                 { label: 'AI config', href: '/admin/ai-config' },
+                { label: 'AI PROMPT', href: '/admin/ai-prompt' },
                 { label: 'Octopart request', href: '/admin/octopart-requests' },
                 { label: 'Verified Suppliers', href: '/admin/verified-suppliers' },
                 { label: 'Industry Solutions', href: '/admin/industry-solutions' },

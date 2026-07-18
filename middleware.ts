@@ -1,6 +1,7 @@
 ﻿import { createServerClient } from '@supabase/ssr';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDashboardPathByRole, normalizeAppRole } from './lib/auth/redirectByRole';
+import { SOURCING_CONTEXT_COOKIE, validSourcingContext } from './lib/public-request/sourcing-context';
 
 const protectedPrefixes = ['/customer', '/supplier', '/admin'];
 
@@ -77,7 +78,9 @@ export async function middleware(request: NextRequest) {
     (pathname.startsWith('/admin') && role === 'admin') ||
     (pathname.startsWith('/admin/supplier-inbox') && role === 'support');
 
-  if (allowedRole) {
+  const sourcingBomAccess=pathname.startsWith('/customer/bom')&&await validSourcingContext(request.cookies.get(SOURCING_CONTEXT_COOKIE)?.value,user.id);
+
+  if (allowedRole||sourcingBomAccess) {
     return response;
   }
 

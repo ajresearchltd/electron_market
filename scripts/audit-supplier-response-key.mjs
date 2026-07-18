@@ -1,0 +1,8 @@
+import fs from 'node:fs';import {createClient} from '@supabase/supabase-js';
+for(const line of fs.readFileSync('.env.local','utf8').split(/\r?\n/)){const m=line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);if(m&&!process.env[m[1]])process.env[m[1]]=m[2].replace(/^['"]|['"]$/g,'')}
+const url=process.env.NEXT_PUBLIC_SUPABASE_URL,key=process.env.SUPABASE_SERVICE_ROLE_KEY;if(!url||!key)throw new Error('Supabase read-only audit configuration is unavailable.');const db=createClient(url,key,{auth:{persistSession:false}});
+const chain=await db.from('procurement_chains').select('id,procurement_number').eq('procurement_number','PR-2026-000002').maybeSingle();if(chain.error)throw chain.error;
+const contacts=await db.from('supplier_contact_emails').select('supplier_user_id,normalized_email,is_active,is_verified,consented,can_send_quotes').eq('normalized_email','contact@ajresearch.org');if(contacts.error)throw contacts.error;
+const messages=await db.from('supplier_inbound_messages').select('id,supplier_id,processing_status,sender_authorization_status,procurement_chain_id,rfq_id').eq('sender_email','contact@ajresearch.org').order('received_at',{ascending:false}).limit(10);if(messages.error)throw messages.error;
+const ids=(messages.data??[]).map(x=>x.id);const responses=ids.length?await db.from('supplier_responses').select('id,source_message_id,procurement_chain_id,supplier_id,response_revision').in('source_message_id',ids):{data:[],error:null};if(responses.error)throw responses.error;
+console.log(JSON.stringify({chainFound:Boolean(chain.data),responseKeyColumnPresent:false,contacts:(contacts.data??[]).map(x=>({...x,supplier_user_id:Boolean(x.supplier_user_id)})),messages:messages.data??[],responses:responses.data??[]},null,2));

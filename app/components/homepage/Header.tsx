@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChevronDown, Menu, X } from 'lucide-react';
+import { ChevronDown, LayoutDashboard, LogOut, Menu, User, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { loadHomepageContent } from './homepageContent';
+import {createClient}from'../../../lib/supabase/client';
+import { getPublicHubNavigation } from '../../../lib/auth/redirectByRole';
 
 const fallbackNavItems = [
   { label: 'How it works', href: '#how-it-works' },
@@ -20,6 +22,7 @@ export default function Header() {
   const [open, setOpen] = useState(false);
   const [language, setLanguage] = useState('EN');
   const [navItems, setNavItems] = useState(fallbackNavItems);
+  const [identity,setIdentity]=useState<any>(null);
 
   useEffect(() => {
     let active = true;
@@ -37,6 +40,10 @@ export default function Header() {
     loadHeader();
     return () => { active = false; };
   }, []);
+  useEffect(()=>{let active=true;const load=()=>fetch('/api/public/request-access/session',{cache:'no-store'}).then(r=>r.json()).then(value=>{if(active)setIdentity(value.kind==='authenticated'?value:null)}).catch(()=>{});load();window.addEventListener('electron-market:auth-changed',load);const{data}=createClient().auth.onAuthStateChange(()=>load());return()=>{active=false;window.removeEventListener('electron-market:auth-changed',load);data.subscription.unsubscribe()}},[]);
+  const signOut=async()=>{await createClient().auth.signOut();setIdentity(null);window.location.href='/'};
+  const hubHref=identity?.role==='admin'||identity?.role==='support'?'/admin':identity?.role==='supplier'?'/supplier/dashboard':'/customer/dashboard';
+  const hubNavigation = getPublicHubNavigation(identity?.role);
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-[#020b1f]/95 text-white shadow-sm backdrop-blur-xl">
@@ -69,12 +76,12 @@ export default function Header() {
             {language}
             <ChevronDown size={14} aria-hidden="true" />
           </button>
-          <Link href="/login" className="public-header-control inline-flex h-8 items-center rounded-md border border-white/15 px-3 text-xs font-medium text-blue-100 hover:bg-white/10 hover:text-white">
+          {identity?<>{hubNavigation&&<Link href={hubNavigation.href} aria-label={hubNavigation.ariaLabel} className="public-header-control inline-flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md border border-white/30 bg-indigo-950 px-3 text-xs font-semibold text-white shadow-sm transition-colors hover:border-blue-200 hover:bg-blue-100 hover:text-blue-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-blue-950"><LayoutDashboard size={14} aria-hidden="true"/>{hubNavigation.label}</Link>}<Link href={hubHref} className="flex items-center gap-2 rounded-lg border border-white/15 bg-white/5 px-2 py-1 text-left hover:bg-white/10">{identity.avatarUrl?<img src={identity.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover"/>:<span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600"><User size={16}/></span>}<span className="max-w-36 leading-tight"><strong className="block truncate text-xs text-white">{identity.fullName}</strong><span className="block truncate text-[10px] text-blue-200">{identity.companyName}</span></span></Link><button onClick={signOut} aria-label="Sign out" className="rounded-md border border-white/15 p-2 text-blue-100 hover:bg-white/10"><LogOut size={15}/></button></>:<><Link href="/login" className="public-header-control inline-flex h-8 items-center rounded-md border border-white/15 px-3 text-xs font-medium text-blue-100 hover:bg-white/10 hover:text-white">
             Log in
           </Link>
           <Link href="/register/customer" className="public-header-control inline-flex h-8 items-center rounded-md bg-[#2f80ff] px-4 text-xs font-semibold text-white shadow-sm hover:bg-[#4d95ff]">
             Sign up
-          </Link>
+          </Link></>}
         </div>
 
         <button
@@ -96,14 +103,14 @@ export default function Header() {
                 {item.label}
               </a>
             ))}
-            <div className="grid grid-cols-2 gap-3 pt-2">
+            {identity?<div className="grid gap-3 pt-2">{hubNavigation&&<Link href={hubNavigation.href} aria-label={hubNavigation.ariaLabel} className="inline-flex items-center justify-center gap-2 rounded-md border border-blue-300 bg-blue-600 px-4 py-2.5 text-center text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300"><LayoutDashboard size={16} aria-hidden="true"/>{hubNavigation.label}</Link>}<Link href={hubHref} className="rounded-md border border-white/15 bg-white/5 px-4 py-2.5 text-center text-sm font-semibold text-white">{identity.fullName} · Profile</Link><button onClick={signOut} className="rounded-md border border-white/20 px-4 py-2.5 text-sm font-semibold">Sign out</button></div>:<div className="grid grid-cols-2 gap-3 pt-2">
               <Link href="/login" className="site-button rounded-md border border-white/20 px-4 py-2.5 text-center text-sm font-semibold text-blue-50 hover:bg-white/10">
                 Log in
               </Link>
               <Link href="/register/customer" className="site-button rounded-md bg-[#2f80ff] px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-[#4d95ff]">
                 Sign up
               </Link>
-            </div>
+            </div>}
           </nav>
         </div>
       )}

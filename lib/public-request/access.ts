@@ -1,0 +1,64 @@
+import 'server-only';
+import { createClient } from '../supabase/server';
+import { createAdminClient } from '../supabase/admin';
+import { validatePublicEnquiry } from './policy';
+
+export async function currentRequestIdentity() {
+  const session = await createClient(), { data: { user } } = await session.auth.getUser();
+  if (user) {
+    const [profile, company] = await Promise.all([
+      session.from('user_profiles').select('id,email,full_name,company_name,role').eq('id', user.id).maybeSingle(),
+      session.from('customer_company_profiles').select('company_name,profile_photo_path,profile_photo_url').eq('user_id', user.id).maybeSingle(),
+    ]);
+    let avatarUrl: string | null = company.data?.profile_photo_url ?? null;
+    if (company.data?.profile_photo_path) {
+      const signed = await session.storage.from('customer-profile-photos').createSignedUrl(company.data.profile_photo_path, 600);
+      avatarUrl = signed.data?.signedUrl ?? avatarUrl;
+    }
+    return { kind: 'authenticated' as const, userId: user.id, email: user.email ?? profile.data?.email ?? '', role: profile.data?.role ?? null, fullName: profile.data?.full_name ?? user.email ?? 'Customer', companyName: company.data?.company_name ?? profile.data?.company_name ?? 'Customer', avatarUrl };
+  }
+  return { kind: 'guest' as const, verified: false };
+}
+
+export const validateEnquiry = validatePublicEnquiry;
+
+type EnquiryContext = { source?: unknown; industrySolutionId?: unknown } | null | undefined;
+
+export async function submitPublicEnquiry(type: string, payload: any, submissionIdempotencyKey: unknown, context?: EnquiryContext) {
+  const identity = await currentRequestIdentity(), error = validatePublicEnquiry(type, payload), key = String(submissionIdempotencyKey ?? '');
+  if (error) return { ok: false, error };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(key)) return { ok: false, error: 'A valid submission identity is required.' };
+  if (identity.kind !== 'authenticated') return { ok: false, error: 'Sign in with your email code before submitting a request.' };
+
+  const db = createAdminClient();
+  if (!db) throw new Error('Request submission is unavailable.');
+  const existing = await db.from('public_sourcing_enquiries').select('id,created_at').eq('customer_user_id', identity.userId).eq('submission_idempotency_key', key).maybeSingle();
+  if (existing.data) {
+    const year = new Date(existing.data.created_at).getUTCFullYear();
+    return { ok: true, id: existing.data.id, requestNumber: `PRE-${year}-${existing.data.id.slice(0, 8).toUpperCase()}`, idempotentReplay: true };
+  }
+
+  let source = 'homepage';
+  const safePayload: Record<string, unknown> = Object.fromEntries(Object.entries(payload ?? {}).map(([field, value]) => [field, typeof value === 'string' ? value.trim().slice(0, 10000) : value]));
+  if (context?.source === 'industry_solution_detail') {
+    const industrySolutionId = String(context.industrySolutionId ?? '').trim();
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(industrySolutionId)) return { ok: false, error: 'The Industry Solution is not available.' };
+    const solution = await db.from('industry_solution').select('ind_id,title').eq('ind_id', industrySolutionId).maybeSingle();
+    if (solution.error || !solution.data) return { ok: false, error: 'The Industry Solution is not available.' };
+    source = 'industry_solution_detail';
+    safePayload.source = source;
+    safePayload.industrySolutionId = solution.data.ind_id;
+    safePayload.industrySolutionTitle = solution.data.title;
+  }
+
+  const inserted = await db.from('public_sourcing_enquiries').insert({ request_session_id: null, customer_user_id: identity.userId, request_type: type, contact_email: identity.email, payload: safePayload, status: 'submitted', source, submission_idempotency_key: key }).select('id,created_at').single();
+  if (inserted.error?.code === '23505') {
+    const replay = await db.from('public_sourcing_enquiries').select('id,created_at').eq('customer_user_id', identity.userId).eq('submission_idempotency_key', key).single();
+    if (replay.error) throw new Error('Request could not be recovered.');
+    const year = new Date(replay.data.created_at).getUTCFullYear();
+    return { ok: true, id: replay.data.id, requestNumber: `PRE-${year}-${replay.data.id.slice(0, 8).toUpperCase()}`, idempotentReplay: true };
+  }
+  if (inserted.error) throw new Error('Request could not be saved.');
+  const year = new Date(inserted.data.created_at).getUTCFullYear();
+  return { ok: true, id: inserted.data.id, requestNumber: `PRE-${year}-${inserted.data.id.slice(0, 8).toUpperCase()}`, idempotentReplay: false };
+}

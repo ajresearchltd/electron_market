@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { timingSafeEqual } from 'crypto';
 import { createAdminClient } from '../../../../../lib/supabase/admin';
 import { ingestInboundEmail, normalizeInboundEmail, parseEml, type NormalizedInboundEmail } from '../../../../../lib/supplier-email/pipeline';
+import {runSupplierEmailQueue} from '../../../../../lib/supplier-email/queue';
 
 const fail = (error: string, status = 400) => NextResponse.json({ error }, { status });
 export const runtime = 'nodejs';
@@ -47,6 +48,8 @@ export async function POST(request: Request) {
   if (!inbound.email) return fail(inbound.error || 'Inbound email body is invalid.', inbound.status || 400);
 
   try {
-    const result = await ingestInboundEmail(database, inbound.email); return NextResponse.json(result, { status: result.duplicate ? 200 : 202 });
+    const result = await ingestInboundEmail(database, inbound.email);
+    if(!result.duplicate){const queued=await database.from('supplier_inbound_messages').update({processing_status:'queued',processing_error:null,locked_at:null}).eq('id',result.id).eq('processing_status','received');if(queued.error)throw new Error('Inbound email was stored but could not be queued.');const processed=await runSupplierEmailQueue(database,1);return NextResponse.json({...result,processing_status:processed.find((row:any)=>row.id===result.id)?.status??'queued',automaticProcessing:true},{status:202})}
+    return NextResponse.json({...result,automaticProcessing:false},{status:200});
   } catch (error) { console.error('[inbound-email-webhook]', error); return fail(error instanceof Error ? error.message : 'Inbound email was rejected.', 500); }
 }

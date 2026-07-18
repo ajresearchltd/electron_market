@@ -4,8 +4,11 @@ import { createOpenAIClient, extractResponseText, loadAiConfig, resolveOpenAIKey
 import { createProgressFromBomUpload, isMissingProgressTableError } from '../../../../../lib/procurement-progress/progress';
 import { normalizeProcurementPreferences } from '../../../../../lib/procurement-preferences';
 import { createClient } from '../../../../../lib/supabase/server';
+import { createRequiredAdminClient } from '../../../../../lib/supabase/admin';
+import { cookies } from 'next/headers';
+import { SOURCING_CONTEXT_COOKIE, validSourcingContext } from '../../../../../lib/public-request/sourcing-context';
 
-const requiredFields = ['documentName'];
+const requiredFields: string[] = [];
 
 const mainFields = ['part_number', 'manufacturer', 'quantity', 'description'];
 const secondaryFields = [
@@ -311,14 +314,22 @@ export async function POST(request: NextRequest) {
   let orderPreferences;
   try { orderPreferences = normalizeProcurementPreferences(JSON.parse(String(form.orderPreferences || '{}'))); }
   catch (error) { return jsonError(error instanceof Error ? error.message : 'Invalid order preferences.'); }
-  const hasDeliveryOrLeadTime = Boolean(String(form.requiredDeliveryDate || form.defaultLeadTime || '').trim());
   const missing = requiredFields.filter((field) => !String(form[field] ?? '').trim());
-  if (!hasDeliveryOrLeadTime) missing.push('requiredDeliveryDate');
   if (missing.length > 0) return jsonError(`Required fields missing: ${missing.join(', ')}.`);
 
   const supabase = await createClient();
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError || !authData.user) return jsonError('You must be signed in as a customer to upload a BOM.', 401);
+  const submissionKey=String(form.submissionIdempotencyKey||'');
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(submissionKey))return jsonError('A valid submission identity is required.');
+  const database=createRequiredAdminClient();
+  const canonicalRole=await database.from('user_profiles').select('role').eq('id',authData.user.id).maybeSingle();
+  const sourcingAccess=await validSourcingContext((await cookies()).get(SOURCING_CONTEXT_COOKIE)?.value,authData.user.id);
+  if(canonicalRole.data?.role!=='customer'&&!sourcingAccess)return jsonError('Customer authorization is required.',403);
+  let preliminary=await database.from('public_sourcing_enquiries').select('id,created_at').eq('customer_user_id',authData.user.id).eq('submission_idempotency_key',submissionKey).maybeSingle();
+  if(!preliminary.data){const created=await database.from('public_sourcing_enquiries').insert({customer_user_id:authData.user.id,request_session_id:null,request_type:'bom',contact_email:authData.user.email||'',payload:{documentName:form.documentName,originalFileName:file.name},status:'draft',source:'homepage',submission_idempotency_key:submissionKey}).select('id,created_at').single();if(created.error?.code==='23505')preliminary=await database.from('public_sourcing_enquiries').select('id,created_at').eq('customer_user_id',authData.user.id).eq('submission_idempotency_key',submissionKey).single();else if(created.error)return jsonError('Preliminary Order could not be created.',500);else preliminary=created}
+  const existingUpload=await database.from('customer_bom_uploads').select('id,total_rows,valid_rows,warning_rows,error_rows,preliminary_order_id').eq('preliminary_order_id',preliminary.data!.id).eq('user_id',authData.user.id).maybeSingle();
+  if(existingUpload.data){const existingItems=await database.from('customer_bom_upload_items').select('id,row_number,part_number,manufacturer,quantity,description,validation_status,validation_errors,validation_warnings').eq('upload_id',existingUpload.data.id).eq('user_id',authData.user.id).order('row_number').limit(10);return NextResponse.json({upload_id:existingUpload.data.id,total_rows:existingUpload.data.total_rows,valid_rows:existingUpload.data.valid_rows,warning_rows:existingUpload.data.warning_rows,error_rows:existingUpload.data.error_rows,preview_rows:existingItems.data??[],idempotentReplay:true,request_number:`PRE-${new Date(preliminary.data!.created_at).getUTCFullYear()}-${preliminary.data!.id.slice(0,8).toUpperCase()}`})}
 
   const { data: profile } = await supabase
     .from('customer_company_profiles')
@@ -335,7 +346,7 @@ export async function POST(request: NextRequest) {
   const contactEmail = profile?.contact_email || userProfile?.email || authData.user.email || '';
   const contactPhone = profile?.phone || profile?.contact_phone || null;
 
-  const storagePath = `${authData.user.id}/${Date.now()}-${sanitizeFileName(file.name)}`;
+  const storagePath = `${authData.user.id}/${preliminary.data!.id}/${sanitizeFileName(file.name)}`;
   const { error: uploadError } = await supabase.storage.from('customer-bom-files').upload(storagePath, file, {
     upsert: true,
     contentType: file.type || 'application/octet-stream',
@@ -349,8 +360,9 @@ export async function POST(request: NextRequest) {
     .from('customer_bom_uploads')
     .insert({
       user_id: authData.user.id,
+      preliminary_order_id: preliminary.data!.id,
       customer_profile_id: profile?.id || null,
-      document_name: form.documentName,
+      document_name: form.documentName || file.name,
       customer_company_name: customerCompanyName,
       contact_person: contactPerson,
       contact_email: contactEmail,
@@ -405,7 +417,7 @@ export async function POST(request: NextRequest) {
     const description = read(row, columnMap, 'description') || read(row, columnMap, 'product_name') || read(row, columnMap, 'specification');
     const warnings: string[] = [];
     const errors: string[] = [];
-    if (!partNumber) errors.push('Missing Part Number');
+    if (!partNumber) warnings.push('Missing Part Number — manual review required.');
     if (quantity === null) errors.push('Missing Quantity');
     if (partNumber && /^[0-9.,$€£\s]+$/.test(partNumber)) warnings.push('Part number looks like a price or numeric-only value.');
     if (!manufacturer) warnings.push('Missing Manufacturer');
@@ -510,8 +522,12 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  await database.from('public_sourcing_enquiries').update({status:'submitted',payload:{documentName:form.documentName,originalFileName:file.name,bomUploadId:upload.id,totalRows:itemRows.length,validRows,warningRows,errorRows,normalizedPreview:itemRows.slice(0,5).map(row=>({rowNumber:row.row_number,partNumber:row.part_number,manufacturer:row.manufacturer,quantity:row.quantity,description:row.description,status:row.validation_status})),bomDetailHref:`/customer/bom-uploads/${upload.id}`,procurementChainId:procurementChainId||null,procurementNumber:procurementNumber||null,destinationCountry:form.destinationCountry||null,targetBudget:parseNumber(form.targetBudget),currency:form.budgetCurrency||'USD'},updated_at:new Date().toISOString()}).eq('id',preliminary.data!.id).eq('customer_user_id',authData.user.id);
   return NextResponse.json({
     upload_id: upload.id,
+    preliminary_order_id: preliminary.data!.id,
+    request_number: `PRE-${new Date(preliminary.data!.created_at).getUTCFullYear()}-${preliminary.data!.id.slice(0,8).toUpperCase()}`,
+    idempotentReplay: false,
     total_rows: itemRows.length,
     valid_rows: validRows,
     warning_rows: warningRows,

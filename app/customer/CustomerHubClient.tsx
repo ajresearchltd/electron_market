@@ -221,7 +221,7 @@ function DataTable({
   emptyText,
   onRowActivate,
 }: {
-  columns: Array<{ key: string; label: string; render?: (row: GenericRow) => React.ReactNode }>;
+  columns: Array<{ key: string; label: string; sticky?: boolean; render?: (row: GenericRow) => React.ReactNode }>;
   rows: GenericRow[];
   emptyText: string;
   onRowActivate?: (row: GenericRow) => void;
@@ -232,7 +232,7 @@ function DataTable({
         <thead className="bg-blue-600 text-white">
           <tr>
             {columns.map((column) => (
-              <th key={column.key} className="px-4 py-3 text-xs font-semibold uppercase tracking-wide">
+              <th key={column.key} className={`px-4 py-3 text-xs font-semibold uppercase tracking-wide ${column.sticky?'sticky left-0 z-20 bg-blue-700 shadow-[2px_0_4px_rgba(15,23,42,.18)]':''}`}>
                 {column.label}
               </th>
             ))}
@@ -248,7 +248,7 @@ function DataTable({
           ) : rows.map((row, index) => (
             <tr key={String(row.id ?? row.rfq_id ?? row.quote_id ?? row.order_number ?? row.file_name ?? index)} role={onRowActivate?'link':undefined} tabIndex={onRowActivate?0:undefined} onClick={()=>onRowActivate?.(row)} onKeyDown={event=>{if(onRowActivate&&(event.key==='Enter'||event.key===' ')){event.preventDefault();onRowActivate(row)}}} className={`${onRowActivate?'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 ':''}hover:bg-blue-50/50`}>
               {columns.map((column) => (
-                <td key={column.key} className="px-4 py-3 text-slate-700">
+                <td key={column.key} className={`px-4 py-3 text-slate-700 ${column.sticky?'sticky left-0 z-10 bg-white shadow-[2px_0_4px_rgba(15,23,42,.12)]':''}`}>
                   {column.render ? column.render(row) : formatValue(row[column.key])}
                 </td>
               ))}
@@ -526,6 +526,7 @@ export default function CustomerHubPage() {
               emptyText="No RFQs yet."
               onRowActivate={(row)=>{if(row.rfq_id)window.location.href=`/customer/rfqs/${encodeURIComponent(String(row.rfq_id))}`}}
               columns={[
+                {key:'action',label:'Action',sticky:true,render:(row)=><Link href={`/customer/rfqs/${encodeURIComponent(String(row.rfq_id||''))}`} aria-label={`View RFQ ${String(row.order_number||row.rfq_id||'')}`} onClick={(event)=>event.stopPropagation()} className="inline-flex items-center justify-center rounded-md border border-white bg-indigo-950 px-3 py-1.5 text-xs font-semibold text-white shadow-md transition hover:bg-blue-100 hover:text-slate-950">View</Link>},
                 { key: 'order_number', label: 'RFQ No', render: (row) => <span className="font-semibold text-slate-950">{formatValue(row.order_number)}</span> },
                 { key: 'rfq_name', label: 'RFQ Name', render: (row) => formatValue(row.rfq_name || row.category_name || row.buyer_notes || row.order_number) },
                 { key: 'rfq_type', label: 'Type', render: (row) => humanize(row.rfq_type || row.request_type || 'RFQ') },
@@ -534,20 +535,6 @@ export default function CustomerHubPage() {
                 { key: 'deadline_at', label: 'Required Delivery', render: (row) => formatValue(row.deadline_at || row.required_delivery_at) },
                 { key: 'rfq_status', label: 'Status', render: (row) => <StatusBadge value={row.rfq_status || 'open'} /> },
                 { key: 'quotes', label: 'Quotes', render: (row) => quotes.filter((quote) => quote.order_number === row.order_number).length },
-                {
-                  key: 'action',
-                  label: 'Action',
-                  render: (row) => {
-                    const quoteCount = quotes.filter((quote) => quote.order_number === row.order_number).length;
-                    return (
-                      <div className="flex flex-wrap gap-2">
-                        <Link href={`/customer/rfqs/${encodeURIComponent(String(row.rfq_id || ''))}`} onClick={(event)=>event.stopPropagation()} className={actionButtonClass}>View</Link>
-                        {String(row.rfq_status || '').toLowerCase() === 'draft' && <Link href={`/create-request?rfq=${encodeURIComponent(String(row.rfq_id || ''))}&mode=edit`} onClick={(event)=>event.stopPropagation()} className={actionButtonClass}>Edit</Link>}
-                        {quoteCount > 0 && <a href="#supplier-quotes" className={actionButtonClass}>Compare Quotes</a>}
-                      </div>
-                    );
-                  },
-                },
               ]}
             />
           </SectionCard>

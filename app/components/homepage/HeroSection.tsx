@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { loadHomepageContent } from './homepageContent';
-import AiOrderChatModal from '../ai/AiOrderChatModal';
+import {openRequestEntry}from'./RequestEntryModal';
 
 const fallbackStats = [
   { value: '5,000+', label: 'Verified Suppliers' },
@@ -26,7 +26,6 @@ export default function HeroSection() {
   const [title, setTitle] = useState('Global Marketplace for Electronic Components and Equipment');
   const [subtitle, setSubtitle] = useState('Upload your BOM, get quotes from verified suppliers and source components faster and smarter.');
   const [stats, setStats] = useState(fallbackStats);
-  const [isChatOpen, setIsChatOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -68,7 +67,7 @@ export default function HeroSection() {
           <p className="mt-4 max-w-lg text-base leading-7 text-blue-100 drop-shadow md:text-lg">{subtitle}</p>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-            <button type="button" onClick={() => setIsChatOpen(true)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#2f80ff] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 hover:bg-[#4d95ff]">
+            <button type="button" onClick={openRequestEntry} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#2f80ff] px-5 text-sm font-semibold text-white shadow-lg shadow-blue-950/30 hover:bg-[#4d95ff]">
               Upload BOM / Get Quotes
               <ArrowRight size={18} aria-hidden="true" />
             </button>
@@ -92,7 +91,6 @@ export default function HeroSection() {
           </Link>
         </div>
       </div>
-      <AiOrderChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </section>
   );
 }

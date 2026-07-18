@@ -10,6 +10,7 @@ type IndustrySolutionRow = {
   ind_id: string;
   title: string | null;
   text: string | null;
+  product_summary: string | null;
   pic: string | null;
   icon?: typeof Factory;
 };
@@ -28,7 +29,7 @@ export default function IndustrySolutionsSection() {
     const loadSolutions = async () => {
       const { data, error } = await supabase
         .from('industry_solution')
-        .select('ind_id, title, text, pic')
+        .select('ind_id, title, text, pic, product_summary')
         .order('title', { ascending: true });
 
       if (!active) return;
@@ -63,7 +64,7 @@ export default function IndustrySolutionsSection() {
 
   return (
     <section className="bg-white py-8 md:py-10">
-      <div className="mx-auto max-w-[1180px] px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1475px] px-4 sm:px-6 lg:px-8">
         <div className="mb-5">
           <h2 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
@@ -71,14 +72,14 @@ export default function IndustrySolutionsSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <div className="grid grid-cols-2 justify-items-center gap-4 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6">
           {solutions.map((solution) => {
             const Icon = solution.icon ?? Factory;
             const pic = solution.pic?.trim();
             return (
-              <Link href={`/industry-solutions/${encodeURIComponent(solution.ind_id)}`} key={solution.ind_id}>
-              <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md">
-                <div className="flex aspect-[4/3] w-full items-center justify-center overflow-hidden bg-blue-50 text-blue-600">
+              <Link href={`/industry-solutions/${encodeURIComponent(solution.ind_id)}`} key={solution.ind_id} className="h-full w-full max-w-[220px]">
+              <article className="flex min-h-[245px] w-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm hover:border-blue-200 hover:shadow-md">
+                <div className="flex h-[165px] w-full flex-none items-center justify-center overflow-hidden bg-blue-50 text-blue-600">
                   {pic ? (
                     isImagePath(pic) ? (
                       <img src={pic} alt="" className="h-full w-full object-cover" />
@@ -89,9 +90,9 @@ export default function IndustrySolutionsSection() {
                     <Icon size={28} aria-hidden="true" />
                   )}
                 </div>
-                <div className="p-2.5 text-center">
-                  <h3 className="text-xs font-semibold leading-4 text-slate-950">{solution.title || 'Industry Solution'}</h3>
-                  {solution.text && <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-600">{solution.text}</p>}
+                <div className="flex min-h-0 flex-1 flex-col p-3 pb-3 text-center">
+                  <h3 className="break-words text-sm font-bold leading-5 text-blue-700">{solution.title || 'Industry Solution'}</h3>
+                  {solution.product_summary && <p className="mt-1.5 break-words text-xs font-medium leading-4 text-slate-900">{solution.product_summary}</p>}
                 </div>
               </article></Link>
             );

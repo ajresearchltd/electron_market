@@ -25,6 +25,7 @@ export type NexarSearchResult = {
 };
 
 let tokenCache: NexarTokenCache | null = null;
+const nexarFetch=async(url:string,init:RequestInit)=>{let last:unknown;for(let attempt=0;attempt<2;attempt++){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);try{const response=await fetch(url,{...init,signal:controller.signal});if(response.ok||response.status<500&&response.status!==429)return response;last=new Error(`Nexar request returned ${response.status}.`)}catch(error){last=error}finally{clearTimeout(timer)}}throw last instanceof Error?last:new Error('Nexar request failed.')};
 
 const getString = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
 const getNumber = (value: unknown) => {
@@ -51,7 +52,7 @@ export async function getNexarAccessToken() {
     scope: 'supply.domain',
   });
 
-  const response = await fetch('https://identity.nexar.com/connect/token', {
+  const response = await nexarFetch('https://identity.nexar.com/connect/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body,
@@ -76,7 +77,7 @@ export async function getNexarAccessToken() {
 
 export async function nexarGraphqlRequest(query: string, variables: Record<string, unknown>) {
   const accessToken = await getNexarAccessToken();
-  const response = await fetch('https://api.nexar.com/graphql', {
+  const response = await nexarFetch('https://api.nexar.com/graphql', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,

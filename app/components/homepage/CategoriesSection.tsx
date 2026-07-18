@@ -57,7 +57,7 @@ export default function CategoriesSection() {
 
   return (
     <section id="categories" className="bg-white pb-8 pt-10 md:pb-10 md:pt-12">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full max-w-[1472px] px-4 sm:px-6 lg:px-8">
         <div className="mb-5 flex items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-slate-950">Shop by Categories</h2>
@@ -81,8 +81,8 @@ export default function CategoriesSection() {
 
               return (
                 <Link className="flex-none" href={`/categories/${encodeURIComponent(category.cat_id)}`} key={category.cat_id}>
-                <article className="flex h-[210px] w-[190px] flex-shrink-0 flex-col items-center rounded-lg border border-slate-200 bg-white p-3 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
-                  <div className="flex h-[130px] w-full items-center justify-center overflow-hidden rounded-md bg-[#f3f7fd] text-blue-600">
+                <article className="flex h-[242px] w-[219px] flex-shrink-0 flex-col items-center rounded-lg border border-slate-200 bg-white p-3.5 text-center shadow-sm hover:border-blue-200 hover:shadow-md">
+                  <div className="flex h-[150px] w-full items-center justify-center overflow-hidden rounded-md bg-[#f3f7fd] text-blue-600">
                     {pic ? (
                       isImagePath(pic) ? (
                         <img src={pic} alt="" className="h-full w-full object-contain p-3" />
@@ -93,7 +93,7 @@ export default function CategoriesSection() {
                       <Icon size={42} aria-hidden="true" />
                     )}
                   </div>
-                  <h3 className="mt-3 line-clamp-2 text-base font-semibold leading-5 text-blue-950">{title}</h3>
+                  <h3 className="mt-3.5 line-clamp-2 text-base font-semibold leading-5 text-blue-950">{title}</h3>
                 </article></Link>
               );
             })}

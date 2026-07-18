@@ -1,0 +1,10 @@
+import fs from 'node:fs';import{createClient}from'@supabase/supabase-js';
+for(const line of fs.readFileSync('.env.local','utf8').split(/\r?\n/)){const m=line.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);if(m&&!process.env[m[1]])process.env[m[1]]=m[2].replace(/^['"]|['"]$/g,'')}
+const db=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL,process.env.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false}}),rfqId='4e656229-d1f3-4d23-8685-6db22fc89e27';
+const rfq=await db.from('rfq_orders0').select('rfq_id,procurement_chain_id,procurement_number,customer_id').eq('rfq_id',rfqId).single();if(rfq.error)throw rfq.error;
+const allocations=await db.from('procurement_supplier_allocations').select('id,procurement_chain_id,rfq_id,rfq_item_id,supplier_response_item_id,supplier_id,is_active,allocated_quantity,selected_unit_price,currency,selected_at,selected_by').eq('rfq_id',rfqId).eq('is_active',true);if(allocations.error)throw allocations.error;
+const offers=await db.from('supplier_response_items').select('id,supplier_response_id,rfq_id,rfq_item_id,procurement_chain_id,supplier_id,is_current').in('id',allocations.data.map(x=>x.supplier_response_item_id));if(offers.error)throw offers.error;
+const responses=await db.from('supplier_responses').select('id,rfq_id,procurement_chain_id,supplier_id,is_current,response_revision').in('id',[...new Set(offers.data.map(x=>x.supplier_response_id))]);if(responses.error)throw responses.error;
+const invoiceItems=await db.from('procurement_invoice_items').select('invoice_id,source_allocation_id,source_rfq_item_id,source_supplier_response_item_id').in('source_allocation_id',allocations.data.map(x=>x.id));if(invoiceItems.error)throw invoiceItems.error;
+const actors=await db.from('user_profiles').select('id,role').in('id',allocations.data.map(x=>x.selected_by));if(actors.error)throw actors.error;
+console.log(JSON.stringify({rfq:rfq.data,allocations:allocations.data,offers:offers.data,responses:responses.data,invoiceItems:invoiceItems.data,actors:actors.data},null,2));

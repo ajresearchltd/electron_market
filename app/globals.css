@@ -409,3 +409,9 @@ a {
   border-radius: 0.75rem;
   padding: 0;
 }
+
+/* The request selector needs room for four illustrated service cards. */
+[aria-label="Start your sourcing request"] > section:has(#request-type-selector) {
+  width: min(1280px, calc(100vw - 48px));
+  max-width: calc(100vw - 48px);
+}

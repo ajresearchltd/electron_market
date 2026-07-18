@@ -3,24 +3,28 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
 import HubButton from '../../components/ui/HubButton';
+import{INDUSTRY_PRODUCT_SUMMARY_MAX_LENGTH,normalizeIndustryProductSummary,validateIndustryProductSummary}from'../../../lib/industry-solutions/product-summary';
 
 type IndustrySolutionRow = {
   ind_id: string;
   title: string | null;
   text: string | null;
   pic: string | null;
+  product_summary: string | null;
 };
 
 type IndustrySolutionForm = {
   title: string;
   text: string;
   pic: string;
+  productSummary: string;
 };
 
 const emptyForm: IndustrySolutionForm = {
   title: '',
   text: '',
   pic: '',
+  productSummary: '',
 };
 
 const acceptedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
@@ -71,7 +75,7 @@ export default function AdminIndustrySolutionsPage() {
 
     const { data, error: queryError } = await supabase
       .from('industry_solution')
-      .select('ind_id, title, text, pic')
+      .select('ind_id, title, text, pic, product_summary')
       .order('ind_id', { ascending: true });
 
     if (queryError) {
@@ -183,6 +187,7 @@ export default function AdminIndustrySolutionsPage() {
       title: toFormValue(solution.title),
       text: toFormValue(solution.text),
       pic: toFormValue(solution.pic),
+      productSummary: toFormValue(solution.product_summary),
     });
     setIdInfo(`Editing record: ${solution.ind_id}`);
     resetCreateImage();
@@ -224,22 +229,19 @@ export default function AdminIndustrySolutionsPage() {
         title: toNullable(nextFormData.title),
         text: toNullable(nextFormData.text),
         pic: picValue,
+        product_summary: normalizeIndustryProductSummary(nextFormData.productSummary),
       };
 
-      if (editingId) {
-        const { error: updateError } = await supabase
-          .from('industry_solution')
-          .update(payload)
-          .eq('ind_id', editingId);
+      const summaryError=validateIndustryProductSummary(payload.product_summary);
+      if(summaryError)throw new Error(summaryError);
 
-        if (updateError) throw new Error(updateError.message);
+      if (editingId) {
+        const response=await fetch(`/api/admin/industry-solutions/${encodeURIComponent(editingId)}`,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}),result=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(result.error||'Industry Solution could not be saved.');
         setNotice('Industry Solution updated successfully.');
       } else {
-        const { error: insertError } = await supabase
-          .from('industry_solution')
-          .insert(payload);
-
-        if (insertError) throw new Error(insertError.message);
+        const response=await fetch('/api/admin/industry-solutions',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)}),result=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(result.error||'Industry Solution could not be saved.');
         setNotice('Industry Solution created successfully.');
       }
 
@@ -285,7 +287,7 @@ export default function AdminIndustrySolutionsPage() {
           </p>
           <h1 className="text-3xl font-bold tracking-tight text-white">Industry Solutions Admin</h1>
           <p className="mt-2 text-blue-100">Manage records from the Supabase table industry_solution.</p>
-          <p className="mt-1 text-sm text-blue-200">Actual fields: ind_id, title, text, pic.</p>
+          <p className="mt-1 text-sm text-blue-200">Actual fields: ind_id, title, text, pic, product_summary.</p>
           <p className="mt-1 text-sm text-blue-200">{idInfo}</p>
         </div>
 
@@ -335,6 +337,12 @@ export default function AdminIndustrySolutionsPage() {
               />
             </label>
 
+            <label className="block md:col-span-2">
+              <span className="text-sm font-semibold text-slate-700">Product list / Card subtitle</span>
+              <textarea value={formData.productSummary} maxLength={INDUSTRY_PRODUCT_SUMMARY_MAX_LENGTH} onChange={(event)=>setFormData((current)=>({...current,productSummary:event.target.value}))} className="mt-1 min-h-20 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
+              <span className="mt-1 flex justify-between gap-3 text-xs text-slate-500"><span>Short list of products displayed on the homepage card. Maximum 80 characters.</span><span>{Array.from(formData.productSummary).length} / {INDUSTRY_PRODUCT_SUMMARY_MAX_LENGTH}</span></span>
+            </label>
+
             <div className="md:col-span-2 flex flex-wrap gap-3">
               <HubButton type="submit" loading={saving} loadingText="Saving...">{editingId ? 'Update Industry Solution' : 'Create Industry Solution'}</HubButton>
               {editingId && (
@@ -368,17 +376,18 @@ export default function AdminIndustrySolutionsPage() {
                   <th className="border-b border-slate-200 px-4 py-3 font-bold">pic</th>
                   <th className="border-b border-slate-200 px-4 py-3 font-bold">title</th>
                   <th className="border-b border-slate-200 px-4 py-3 font-bold">text</th>
+                  <th className="border-b border-slate-200 px-4 py-3 font-bold">product_summary</th>
                   <th className="border-b border-slate-200 px-4 py-3 font-bold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">Loading industry solutions...</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">Loading industry solutions...</td>
                   </tr>
                 ) : solutions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No industry solutions found.</td>
+                    <td colSpan={6} className="px-4 py-8 text-center text-slate-500">No industry solutions found.</td>
                   </tr>
                 ) : (
                   solutions.map((solution) => (
@@ -396,6 +405,7 @@ export default function AdminIndustrySolutionsPage() {
                       <td className="border-b border-slate-100 px-4 py-3">
                         <span className="text-slate-700">{solution.text || '-'}</span>
                       </td>
+                      <td className="border-b border-slate-100 px-4 py-3"><span className="text-slate-900">{solution.product_summary || '-'}</span></td>
                       <td className="border-b border-slate-100 px-4 py-3">
                         <div className="flex flex-wrap gap-2">
                           <button

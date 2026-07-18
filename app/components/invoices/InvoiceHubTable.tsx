@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import AdminHubTableViewport from "../admin/AdminHubTableViewport";
 type Role = "customer" | "admin";
 type Row = Record<string, any>;
 const show = (v: any) =>
@@ -365,9 +366,11 @@ function InvoiceModal({
 export default function InvoiceHubTable({
   role,
   title,
+  adminHubViewport = false,
 }: {
   role: Role;
   title: string;
+  adminHubViewport?: boolean;
 }) {
   const [rows, setRows] = useState<Row[]>([]),
     [loading, setLoading] = useState(true),
@@ -428,7 +431,7 @@ export default function InvoiceHubTable({
     >
       <h2 className="text-lg font-bold text-blue-900">{title}</h2>
       {error && <div className="mt-4 bg-red-50 p-3 text-red-700">{error}</div>}
-      <div className="mt-4 overflow-x-auto rounded-xl border">
+      <AdminHubTableViewport label={title} enabled={adminHubViewport} className="mt-4">
         <table className="min-w-[1050px] text-left text-sm">
           <thead className="bg-slate-900 text-white">
             <tr>
@@ -486,7 +489,7 @@ export default function InvoiceHubTable({
             )}
           </tbody>
         </table>
-      </div>
+      </AdminHubTableViewport>
       {selected && (
         <InvoiceModal
           role={role}

@@ -1,0 +1,2 @@
+import{NextResponse}from'next/server';import{submitPublicEnquiry}from'../../../../../lib/public-request/access';
+export async function POST(request:Request){const body=await request.json().catch(()=>({}));try{const result=await submitPublicEnquiry(String(body.type??''),body.payload??{},body.submissionIdempotencyKey,body.context);return NextResponse.json(result,{status:result.ok?(result.idempotentReplay?200:201):422})}catch{return NextResponse.json({error:'Request could not be submitted. Please try again later.'},{status:503})}}

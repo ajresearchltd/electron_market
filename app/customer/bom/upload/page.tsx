@@ -57,7 +57,7 @@ const initialForm: UploadForm = {
   additionalNotes: '',
 };
 
-const requiredFields: Array<keyof UploadForm> = ['documentName'];
+const requiredFields: Array<keyof UploadForm> = [];
 const labels: Record<keyof UploadForm, string> = {
   documentName: 'Document Name',
   customerCompanyName: 'Customer Company',
@@ -108,6 +108,7 @@ export default function CustomerBomUploadPage() {
   const [manufacturersOnly, setManufacturersOnly] = useState(false);
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [processing, setProcessing] = useState(false);
+  const [submissionIdempotencyKey] = useState(() => crypto.randomUUID());
   const [error, setError] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [summary, setSummary] = useState({ totalRows: 0, validRows: 0, warningRows: 0, errorRows: 0 });
@@ -219,13 +220,7 @@ export default function CustomerBomUploadPage() {
     event.preventDefault();
     setError('');
     setStatusMessage('');
-    const missing = requiredFields.filter((field) => !form[field].trim());
-    if (!form.requiredDeliveryDate.trim() && !form.defaultLeadTime.trim()) missing.push('requiredDeliveryDate');
-    setMissingFields(missing);
-    if (missing.length > 0) {
-      setError(`Please fill required fields: ${missing.map((field) => labels[field as keyof UploadForm] || field).join(', ')}.`);
-      return;
-    }
+    setMissingFields([]);
     if (!file) {
       setError('Please choose an Excel or CSV BOM file.');
       return;
@@ -240,6 +235,7 @@ export default function CustomerBomUploadPage() {
       formData.append('allowSubstitutes', String(allowSubstitutes));
       formData.append('manufacturersOnly', String(manufacturersOnly));
       formData.append('orderPreferences', JSON.stringify(preferences));
+      formData.append('submissionIdempotencyKey', submissionIdempotencyKey);
       const response = await fetch('/api/customer/bom/upload', { method: 'POST', body: formData });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'BOM upload failed.');
@@ -274,14 +270,13 @@ export default function CustomerBomUploadPage() {
           </div>
           <div className="flex flex-wrap gap-3">
             <Link href="/customer/dashboard" className={blueButtonClass}>Back to Customer HUB</Link>
-            <Link href="/customer/bom-uploads" className={blueButtonClass}>Uploaded BOM Lists</Link>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="rounded-2xl border border-blue-100 bg-white p-5 shadow-2xl">
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_380px]">
             <section className="min-w-0 rounded-2xl border border-blue-100 bg-blue-50 p-5">
-              <h2 className="text-xl font-bold text-blue-900">General Information</h2>
+              <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-bold text-blue-900">General Information</h2><HubButton type="button" size="sm" onClick={()=>window.dispatchEvent(new Event('electron-market:open-customer-profile'))}>Complete Profile</HubButton></div>
               <div className="mt-4 rounded-xl border border-blue-100 bg-white p-4 text-sm text-slate-600">
                 Customer information is loaded from your profile. To change it, update Customer Profile.
                 {profileWarning && <p className="mt-2 font-semibold text-amber-700">{profileWarning}</p>}
@@ -301,7 +296,7 @@ export default function CustomerBomUploadPage() {
                 ))}
                 {(['documentName', 'projectName', 'destinationCountry', 'requiredDeliveryDate', 'defaultLeadTime', 'targetBudget', 'budgetCurrency', 'preferredIncoterms', 'preferredOriginCountry'] as Array<keyof UploadForm>).map((field) => (
                   <label key={field} className={labelClass}>
-                    {labels[field]} {(requiredFields.includes(field) || field === 'requiredDeliveryDate') && requiredStar}
+                    {labels[field]} {requiredFields.includes(field) && requiredStar}
                     <input
                       type={field === 'requiredDeliveryDate' ? 'date' : 'text'}
                       value={form[field]}
