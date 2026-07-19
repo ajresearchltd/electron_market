@@ -1,4 +1,5 @@
 import './globals.css'
+import RequestEntryModal from './components/homepage/RequestEntryModal'
 
 export const metadata = {
   title: 'ElectroMarket - Global Marketplace for Electronic Components',
@@ -12,7 +13,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="site-button-scope">{children}</body>
+      <body className="site-button-scope">{children}<RequestEntryModal /></body>
     </html>
   )
 }

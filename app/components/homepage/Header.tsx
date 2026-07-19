@@ -10,7 +10,7 @@ import { getPublicHubNavigation } from '../../../lib/auth/redirectByRole';
 
 const fallbackNavItems = [
   { label: 'How it works', href: '#how-it-works' },
-  { label: 'Suppliers', href: '#suppliers' },
+  { label: 'Suppliers', href: '/suppliers' },
   { label: 'Categories', href: '#categories' },
   { label: 'Resources', href: '#resources' },
   { label: 'About us', href: '#about' },
@@ -33,7 +33,7 @@ export default function Header() {
       setLanguage(row.section_1_language ? row.section_1_language.slice(0, 2).toUpperCase() : 'EN');
       setNavItems(fallbackNavItems.map((item, index) => ({
         label: row[`section_1_menu_${index + 1}`] || item.label,
-        href: row[`section_1_menu_${index + 1}_link`] || item.href,
+        href: index===1?'/suppliers':row[`section_1_menu_${index + 1}_link`] || item.href,
       })));
     };
 

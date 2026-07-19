@@ -15,7 +15,6 @@ import CustomerReviewsSection from './components/homepage/CustomerReviewsSection
 import BottomCTASection from './components/homepage/BottomCTASection';
 import Footer from './components/homepage/Footer';
 import { loadHomepageSectionVisibility } from '../lib/homepage/visibility';
-import RequestEntryModal from './components/homepage/RequestEntryModal';
 
 export const metadata = {
   title: 'ElectroMarket - Global Marketplace for Electronic Components',
@@ -45,7 +44,6 @@ export default async function HomePage() {
       {sectionVisibility.customer_reviews && <CustomerReviewsSection />}
       {sectionVisibility.final_cta && <BottomCTASection />}
       <Footer />
-      <RequestEntryModal />
     </main>
   );
 }

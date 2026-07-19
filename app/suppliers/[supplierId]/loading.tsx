@@ -1,1 +1,1 @@
-export { default } from '../../components/details/DetailLoading';
+export default function Loading(){return <main className="min-h-screen bg-slate-50"><div className="mx-auto max-w-[1440px] animate-pulse px-4 py-16"><div className="h-72 rounded-3xl bg-slate-200"/><div className="mt-7 h-48 rounded-2xl bg-white"/><div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{Array.from({length:3},(_,index)=><div key={index} className="h-80 rounded-2xl bg-white"/>)}</div></div></main>}

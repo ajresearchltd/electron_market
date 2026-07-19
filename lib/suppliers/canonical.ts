@@ -1,5 +1,15 @@
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 
+/**
+ * Supplier identity semantics (Phase 1):
+ * - suppliers.supplier_id is the canonical business ID used by products,
+ *   supplier_stock_uploads, verified_supplier.canonical_supplier_id, and the
+ *   canonical_supplier_id columns on company contacts/documents/contact emails.
+ * - rfq_supplier_assignments.supplier_id intentionally remains auth.users.id.
+ * Keep procurement aliases and authorization identity separate from public and
+ * catalogue supplier identity.
+ */
+
 export const isUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
 export type CanonicalSupplier = {

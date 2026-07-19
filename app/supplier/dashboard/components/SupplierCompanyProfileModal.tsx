@@ -1,7 +1,8 @@
 'use client';
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '../../../../lib/supabase/client';
+import { derivePublicProfileCompletion, validateSupplierProfile, type SupplierCompanyProfileEditableData } from '../../../../lib/suppliers/profile-contract';
 import HubButton from '../../../components/ui/HubButton';
 
 const PROFILE_TABLE = 'supplier_company_profiles';
@@ -39,6 +40,37 @@ type ProfileFormData = {
   swift_bic: string;
   payment_currency: string;
   payment_notes: string;
+  employee_count: string;
+  public_display_name: string;
+  public_short_description: string;
+  public_detailed_description: string;
+  public_city: string;
+  public_supplier_type: string;
+  public_brands: string;
+  public_categories: string;
+  logo_url: string;
+  cover_image_url: string;
+  regions_served: string;
+  delivery_countries: string;
+  preferred_currencies: string;
+  supported_languages: string[];
+  minimum_order_value: string;
+  minimum_order_currency: string;
+  typical_lead_time_min_days: string;
+  typical_lead_time_max_days: string;
+  response_time_hours: string;
+  public_incoterms: string[];
+  public_payment_terms: string;
+  manufacturing_capabilities: string[];
+  engineering_capabilities: string[];
+  testing_capabilities: string[];
+  quality_control_capabilities: string[];
+  custom_sourcing_capabilities: string[];
+  additional_capabilities: string[];
+  public_profile_status: 'draft'|'pending_review'|'approved'|'rejected'|'suspended';
+  pending_review_at: string;
+  updated_at: string;
+  decision_reason: string;
 };
 
 type ContactFormData = {
@@ -83,6 +115,11 @@ type SupplierCompanyProfileModalProps = {
   onSaved: (companyName: string) => void;
 };
 
+const optionalNumber=(value:string)=>value.trim()===''?null:Number(value);
+const publicProfileFromForm=(form:ProfileFormData):SupplierCompanyProfileEditableData=>({
+  publicDisplayName:form.public_display_name,publicShortDescription:form.public_short_description,publicDetailedDescription:form.public_detailed_description,country:form.country_name,city:form.public_city,supplierType:form.public_supplier_type,brands:form.public_brands,categories:form.public_categories,logoUrl:form.logo_url,coverImageUrl:form.cover_image_url,regionsServed:form.regions_served,deliveryCountries:form.delivery_countries,preferredCurrencies:form.preferred_currencies,website:form.website,employeeCount:optionalNumber(form.employee_count),supportedLanguages:form.supported_languages,minimumOrderValue:optionalNumber(form.minimum_order_value),minimumOrderCurrency:form.minimum_order_currency,typicalLeadTimeMinDays:optionalNumber(form.typical_lead_time_min_days),typicalLeadTimeMaxDays:optionalNumber(form.typical_lead_time_max_days),responseTimeHours:optionalNumber(form.response_time_hours),publicIncoterms:form.public_incoterms,publicPaymentTerms:form.public_payment_terms,manufacturingCapabilities:form.manufacturing_capabilities,engineeringCapabilities:form.engineering_capabilities,testingCapabilities:form.testing_capabilities,qualityControlCapabilities:form.quality_control_capabilities,customSourcingCapabilities:form.custom_sourcing_capabilities,additionalCapabilities:form.additional_capabilities,
+});
+
 const emptyFormData: ProfileFormData = {
   company_name: '',
   business_registration_number: '',
@@ -111,6 +148,7 @@ const emptyFormData: ProfileFormData = {
   swift_bic: '',
   payment_currency: 'USD',
   payment_notes: '',
+  employee_count:'',public_display_name:'',public_short_description:'',public_detailed_description:'',public_city:'',public_supplier_type:'',public_brands:'',public_categories:'',logo_url:'',cover_image_url:'',regions_served:'',delivery_countries:'',preferred_currencies:'',supported_languages:[],minimum_order_value:'',minimum_order_currency:'',typical_lead_time_min_days:'',typical_lead_time_max_days:'',response_time_hours:'',public_incoterms:[],public_payment_terms:'',manufacturing_capabilities:[],engineering_capabilities:[],testing_capabilities:[],quality_control_capabilities:[],custom_sourcing_capabilities:[],additional_capabilities:[],public_profile_status:'draft',pending_review_at:'',updated_at:'',decision_reason:'',
 };
 
 const emptyContacts: ContactFormData[] = [1, 2, 3].map((index) => ({
@@ -191,6 +229,12 @@ function TextAreaField({
   );
 }
 
+function TagEditor({label,values,onChange,maxItems=30,maxLength=120,uppercase=false,help}:{label:string;values:string[];onChange:(values:string[])=>void;maxItems?:number;maxLength?:number;uppercase?:boolean;help?:string}) {
+  const [draft,setDraft]=useState('');const [localError,setLocalError]=useState('');
+  const add=()=>{let value=draft.trim();if(uppercase)value=value.toUpperCase();if(!value)return;if(value.length>maxLength){setLocalError(`Maximum ${maxLength} characters per item.`);return}if(values.some(item=>item.toLowerCase()===value.toLowerCase())){setLocalError('This item has already been added.');return}if(values.length>=maxItems){setLocalError(`Maximum ${maxItems} items.`);return}onChange([...values,value]);setDraft('');setLocalError('')};
+  return <fieldset className="rounded-xl border border-slate-200 bg-white p-4"><legend className={labelClass}>{label}</legend>{help&&<p className="mt-1 text-xs text-slate-500">{help}</p>}<div className="mt-3 flex gap-2"><input aria-label={`Add ${label}`} value={draft} onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();add()}}} className={inputClass.replace('mt-1 ','')} /><button type="button" onClick={add} className="rounded-lg bg-blue-950 px-4 py-2 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-blue-400">Add</button></div>{localError&&<p role="alert" className="mt-2 text-xs font-semibold text-red-600">{localError}</p>}<div className="mt-3 flex flex-wrap gap-2">{values.map(value=><span key={value} className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-950">{value}<button type="button" aria-label={`Remove ${value}`} onClick={()=>onChange(values.filter(item=>item!==value))} className="rounded-full px-1 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-500">×</button></span>)}</div></fieldset>;
+}
+
 function DocumentPreview({
   file,
   metadata,
@@ -250,6 +294,14 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
   const [documentPreviewUrls, setDocumentPreviewUrls] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [submitting,setSubmitting]=useState(false);
+  const [previewOpen,setPreviewOpen]=useState(false);
+  const [submitOpen,setSubmitOpen]=useState(false);
+  const [imageUploading,setImageUploading]=useState<'logo'|'cover'|''>('');
+  const [imagePreviews,setImagePreviews]=useState<{logo:string;cover:string}>({logo:'',cover:''});
+  const [fieldErrors,setFieldErrors]=useState<string[]>([]);
+  const [initialState,setInitialState]=useState('');
+  const previewButtonRef=useRef<HTMLButtonElement>(null);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
@@ -317,11 +369,10 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
         main_contact_email: user.email || cleanString(userProfile?.email),
       };
 
-      const { data: profile, error: profileError } = await supabase
-        .from(PROFILE_TABLE)
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const profileResponse=await fetch('/api/supplier/profile',{cache:'no-store'});
+      const profileBody=await profileResponse.json().catch(()=>({}));
+      const profile=profileBody.profile;
+      const profileError=profileResponse.ok?null:{message:profileBody.error||'Supplier Company Profile could not be loaded.'};
 
       if (!active) return;
 
@@ -344,8 +395,8 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
         return;
       }
 
-      setProfileId(cleanString(profile.profile_id));
-      setFormData({
+      setProfileId(cleanString(profileBody.profileKey));
+      const loadedForm:ProfileFormData={
         company_name: cleanString(profile.company_name),
         business_registration_number: cleanString(profile.business_registration_number),
         tax_vat_number: cleanString(profile.tax_vat_number),
@@ -373,11 +424,13 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
         swift_bic: cleanString(profile.swift_bic),
         payment_currency: cleanString(profile.payment_currency) || 'USD',
         payment_notes: cleanString(profile.payment_notes),
-      });
+        employee_count:profile.employee_count==null?'':String(profile.employee_count),public_display_name:cleanString(profile.public_display_name),public_short_description:cleanString(profile.public_short_description),public_detailed_description:cleanString(profile.public_detailed_description),public_city:cleanString(profile.public_city),public_supplier_type:cleanString(profile.public_supplier_type),public_brands:cleanString(profile.public_brands),public_categories:cleanString(profile.public_categories),logo_url:cleanString(profile.logo_url),cover_image_url:cleanString(profile.cover_image_url),regions_served:cleanString(profile.regions_served),delivery_countries:cleanString(profile.delivery_countries),preferred_currencies:cleanString(profile.preferred_currencies),supported_languages:Array.isArray(profile.supported_languages)?profile.supported_languages:[],minimum_order_value:profile.minimum_order_value==null?'':String(profile.minimum_order_value),minimum_order_currency:cleanString(profile.minimum_order_currency),typical_lead_time_min_days:profile.typical_lead_time_min_days==null?'':String(profile.typical_lead_time_min_days),typical_lead_time_max_days:profile.typical_lead_time_max_days==null?'':String(profile.typical_lead_time_max_days),response_time_hours:profile.response_time_hours==null?'':String(profile.response_time_hours),public_incoterms:Array.isArray(profile.public_incoterms)?profile.public_incoterms:[],public_payment_terms:cleanString(profile.public_payment_terms),manufacturing_capabilities:Array.isArray(profile.manufacturing_capabilities)?profile.manufacturing_capabilities:[],engineering_capabilities:Array.isArray(profile.engineering_capabilities)?profile.engineering_capabilities:[],testing_capabilities:Array.isArray(profile.testing_capabilities)?profile.testing_capabilities:[],quality_control_capabilities:Array.isArray(profile.quality_control_capabilities)?profile.quality_control_capabilities:[],custom_sourcing_capabilities:Array.isArray(profile.custom_sourcing_capabilities)?profile.custom_sourcing_capabilities:[],additional_capabilities:Array.isArray(profile.additional_capabilities)?profile.additional_capabilities:[],public_profile_status:['draft','pending_review','approved','rejected','suspended'].includes(profile.public_profile_status)?profile.public_profile_status:'draft',pending_review_at:cleanString(profile.pending_review_at),updated_at:cleanString(profile.updated_at),decision_reason:cleanString(profile.decision_reason),
+      };
+      setFormData(loadedForm);setInitialState(JSON.stringify({form:loadedForm,contacts:emptyContacts}));setImagePreviews({logo:cleanString(profileBody.imagePreviews?.logo),cover:cleanString(profileBody.imagePreviews?.cover)});
 
       const [contactsResult, documentsResult] = await Promise.all([
-        supabase.from(CONTACTS_TABLE).select('*').eq('profile_id', profile.profile_id).order('contact_index', { ascending: true }),
-        supabase.from(DOCUMENTS_TABLE).select('*').eq('profile_id', profile.profile_id).order('document_slot', { ascending: true }),
+        supabase.from(CONTACTS_TABLE).select('*').eq('profile_id', profileBody.profileKey).order('contact_index', { ascending: true }),
+        supabase.from(DOCUMENTS_TABLE).select('*').eq('profile_id', profileBody.profileKey).order('document_slot', { ascending: true }),
       ]);
 
       if (!active) return;
@@ -386,8 +439,7 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
         setError(buildSetupMessage(contactsResult.error.message));
       } else {
         const contactRows = (contactsResult.data ?? []) as any[];
-        setContacts(
-          emptyContacts.map((emptyContact) => {
+        const loadedContacts=emptyContacts.map((emptyContact) => {
             const row = contactRows.find((item) => item.contact_index === emptyContact.contact_index);
             return row
               ? {
@@ -400,8 +452,7 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
                   contact_notes: cleanString(row.contact_notes),
                 }
               : emptyContact;
-          })
-        );
+          });setContacts(loadedContacts);setInitialState(JSON.stringify({form:loadedForm,contacts:loadedContacts}));
       }
 
       if (documentsResult.error) {
@@ -445,7 +496,16 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
     };
   }, [isOpen, supabase]);
 
+  const editableProfile=useMemo(()=>publicProfileFromForm(formData),[formData]);
+  const completionPercent=useMemo(()=>derivePublicProfileCompletion(editableProfile),[editableProfile]);
+  const missingRequired=useMemo(()=>{const values=[['Public display name',editableProfile.publicDisplayName],['Public short description',editableProfile.publicShortDescription],['Public full description',editableProfile.publicDetailedDescription],['Country',editableProfile.country],['Supplier type',editableProfile.supplierType],['Product category or specialization',editableProfile.categories],['Supported language',editableProfile.supportedLanguages.length?'yes':'']];const result=values.filter(([,value])=>!value).map(([label])=>label);if(!editableProfile.regionsServed&&!editableProfile.deliveryCountries)result.push('Delivery region or country');return result},[editableProfile]);
+  const dirty=Boolean(initialState)&&JSON.stringify({form:formData,contacts})!==initialState||Object.keys(selectedFiles).length>0;
+  useEffect(()=>{if(!isOpen||!dirty)return;const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue=''};window.addEventListener('beforeunload',warn);return()=>window.removeEventListener('beforeunload',warn)},[dirty,isOpen]);
+  useEffect(()=>{if(!previewOpen&&!submitOpen)return;const key=(event:KeyboardEvent)=>{if(event.key==='Escape'){setPreviewOpen(false);setSubmitOpen(false);previewButtonRef.current?.focus();return}if(event.key==='Tab'){const dialog=document.querySelector<HTMLElement>('[role="dialog"]');const controls=dialog?Array.from(dialog.querySelectorAll<HTMLElement>('button:not([disabled]),input:not([disabled]),a[href]')):[];if(!controls.length)return;const first=controls[0],last=controls[controls.length-1];if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}}};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[previewOpen,submitOpen]);
+
   if (!isOpen) return null;
+
+  const requestClose=()=>{if(dirty&&!window.confirm('You have unsaved changes. Close without saving?'))return;onClose()};
 
   const updateProfileField = (field: keyof ProfileFormData, value: string) => {
     setFormData((current) => ({ ...current, [field]: value }));
@@ -494,151 +554,12 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
     setSelectedFiles((current) => ({ ...current, [slot]: file }));
   };
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSaving(true);
-    setError('');
-    setMessage('');
-
-    const { data: authData, error: authError } = await supabase.auth.getUser();
-    const currentUserId = authData.user?.id || userId;
-
-    if (authError || !currentUserId) {
-      setError(authError?.message || 'You must be signed in to save your supplier company profile.');
-      setSaving(false);
-      return;
-    }
-
-    const yearsValue = formData.years_in_business.trim();
-    const profilePayload = {
-      user_id: currentUserId,
-      company_name: formData.company_name.trim() || null,
-      business_registration_number: formData.business_registration_number.trim() || null,
-      tax_vat_number: formData.tax_vat_number.trim() || null,
-      country_iso2: formData.country_iso2.trim() || null,
-      country_name: formData.country_name.trim() || null,
-      legal_address: formData.legal_address.trim() || null,
-      office_address: formData.office_address.trim() || null,
-      website: formData.website.trim() || null,
-      company_phone: formData.company_phone.trim() || null,
-      company_email: formData.company_email.trim() || null,
-      main_contact_name: formData.main_contact_name.trim() || null,
-      main_contact_position: formData.main_contact_position.trim() || null,
-      main_contact_email: formData.main_contact_email.trim() || null,
-      main_contact_phone: formData.main_contact_phone.trim() || null,
-      company_description: formData.company_description.trim() || null,
-      product_categories_text: formData.product_categories_text.trim() || null,
-      years_in_business: yearsValue ? Number(yearsValue) : null,
-      bank_account_holder_name: formData.bank_account_holder_name.trim() || null,
-      bank_name: formData.bank_name.trim() || null,
-      bank_country_iso2: formData.bank_country_iso2.trim() || null,
-      bank_country_name: formData.bank_country_name.trim() || null,
-      bank_address: formData.bank_address.trim() || null,
-      account_number: formData.account_number.trim() || null,
-      iban: formData.iban.trim() || null,
-      swift_bic: formData.swift_bic.trim() || null,
-      payment_currency: formData.payment_currency.trim() || 'USD',
-      payment_notes: formData.payment_notes.trim() || null,
-    };
-
-    const { data: savedProfile, error: profileError } = await supabase
-      .from(PROFILE_TABLE)
-      .upsert(profilePayload, { onConflict: 'user_id' })
-      .select('profile_id, company_name')
-      .single();
-
-    if (profileError || !savedProfile) {
-      setError(buildSetupMessage(profileError?.message || 'Unable to save supplier company profile.'));
-      setSaving(false);
-      return;
-    }
-
-    const savedProfileId = savedProfile.profile_id as string;
-    setProfileId(savedProfileId);
-
-    const contactPayload = contacts.map((contact) => ({
-      profile_id: savedProfileId,
-      user_id: currentUserId,
-      contact_index: contact.contact_index,
-      contact_name: contact.contact_name.trim() || null,
-      contact_position: contact.contact_position.trim() || null,
-      contact_email: contact.contact_email.trim() || null,
-      contact_phone: contact.contact_phone.trim() || null,
-      contact_whatsapp: contact.contact_whatsapp.trim() || null,
-      contact_notes: contact.contact_notes.trim() || null,
-    }));
-
-    const { error: contactsError } = await supabase
-      .from(CONTACTS_TABLE)
-      .upsert(contactPayload, { onConflict: 'profile_id,contact_index' });
-
-    if (contactsError) {
-      setError(buildSetupMessage(contactsError.message));
-      setSaving(false);
-      return;
-    }
-
-    const uploadedDocuments: Record<number, DocumentMetadata> = { ...documents };
-
-    for (const slotConfig of documentSlots) {
-      const file = selectedFiles[slotConfig.slot];
-      if (!file) continue;
-
-      const timestamp = new Date().toISOString().replace(/[^0-9]/g, '');
-      const storagePath = `supplier-documents/${currentUserId}/${slotConfig.slot}-${timestamp}-${safeFileName(file.name)}`;
-      const { error: uploadError } = await supabase.storage
-        .from(STORAGE_BUCKET)
-        .upload(storagePath, file, { contentType: file.type, upsert: true });
-
-      if (uploadError) {
-        setError(uploadError.message);
-        setSaving(false);
-        return;
-      }
-
-      const documentPayload = {
-        profile_id: savedProfileId,
-        user_id: currentUserId,
-        document_slot: slotConfig.slot,
-        document_type: slotConfig.type,
-        document_title: slotConfig.label,
-        file_name: file.name,
-        file_mime_type: file.type,
-        file_size_bytes: file.size,
-        storage_bucket: STORAGE_BUCKET,
-        storage_path: storagePath,
-        document_status: 'uploaded',
-        uploaded_at: new Date().toISOString(),
-      };
-
-      const { data: savedDocument, error: documentError } = await supabase
-        .from(DOCUMENTS_TABLE)
-        .upsert(documentPayload, { onConflict: 'profile_id,document_slot' })
-        .select('*')
-        .single();
-
-      if (documentError || !savedDocument) {
-        setError(buildSetupMessage(documentError?.message || 'Unable to save document metadata.'));
-        setSaving(false);
-        return;
-      }
-
-      uploadedDocuments[slotConfig.slot] = savedDocument as DocumentMetadata;
-
-      if (file.type.startsWith('image/')) {
-        const { data: signedUrlData } = await supabase.storage
-          .from(STORAGE_BUCKET)
-          .createSignedUrl(storagePath, 60 * 10);
-        setDocumentPreviewUrls((current) => ({ ...current, [slotConfig.slot]: signedUrlData?.signedUrl || '' }));
-      }
-    }
-
-    setDocuments(uploadedDocuments);
-    setSelectedFiles({});
-    setMessage('Company profile saved successfully.');
-    onSaved((savedProfile.company_name as string | null) || formData.company_name || 'Supplier Account');
-    setSaving(false);
-  };
+  const saveProfile=async(action:'draft'|'submit')=>{const setBusy=action==='submit'?setSubmitting:setSaving;setBusy(true);setError('');setMessage('');setFieldErrors([]);const publicProfile=publicProfileFromForm(formData);const local=validateSupplierProfile(publicProfile);if('errors' in local){setFieldErrors(local.errors);setError('Please correct the public profile fields.');setBusy(false);return false}const privateProfile=Object.fromEntries(['company_name','business_registration_number','tax_vat_number','country_iso2','country_name','legal_address','office_address','website','company_phone','company_email','main_contact_name','main_contact_position','main_contact_email','main_contact_phone','company_description','product_categories_text','years_in_business','bank_account_holder_name','bank_name','bank_country_iso2','bank_country_name','bank_address','account_number','iban','swift_bic','payment_currency','payment_notes'].map(key=>[key,(formData as any)[key]]));const response=await fetch('/api/supplier/profile',{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({action,privateProfile,publicProfile,contacts})});const body=await response.json().catch(()=>({}));if(!response.ok){setError(body.error||'Supplier Company Profile could not be saved.');setFieldErrors(body.errors||[]);setBusy(false);return false}setProfileId(body.profileKey||profileId);setFormData(current=>({...current,public_profile_status:body.profile.public_profile_status,pending_review_at:body.profile.pending_review_at||'',updated_at:body.profile.updated_at||''}));
+    const uploaded={...documents};for(const slot of documentSlots){const file=selectedFiles[slot.slot];if(!file)continue;const data=new FormData();data.set('slot',String(slot.slot));data.set('file',file);const upload=await fetch('/api/supplier/profile/document',{method:'POST',body:data});const uploadBody=await upload.json().catch(()=>({}));if(!upload.ok){setError(uploadBody.error||'Document could not be uploaded.');setBusy(false);return false}uploaded[slot.slot]=uploadBody.document;if(uploadBody.previewUrl)setDocumentPreviewUrls(current=>({...current,[slot.slot]:uploadBody.previewUrl}))}setDocuments(uploaded);setSelectedFiles({});const nextForm={...formData,public_profile_status:body.profile.public_profile_status,pending_review_at:body.profile.pending_review_at||'',updated_at:body.profile.updated_at||''};setInitialState(JSON.stringify({form:nextForm,contacts}));setMessage(body.message||'Supplier Company Profile saved.');onSaved(formData.company_name||'Supplier Account');setBusy(false);return true};
+  const handleSubmit=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();await saveProfile('draft')};
+  const confirmSubmit=async()=>{setSubmitOpen(false);await saveProfile('submit')};
+  const uploadImage=async(kind:'logo'|'cover',file?:File)=>{if(!file)return;if(!['image/png','image/jpeg'].includes(file.type)||file.size>2*1024*1024){setError('Use a PNG or JPEG image up to 2 MB.');return}setImageUploading(kind);setError('');const data=new FormData();data.set('kind',kind);data.set('file',file);const response=await fetch('/api/supplier/profile/image',{method:'POST',body:data});const body=await response.json().catch(()=>({}));if(response.ok){setFormData(current=>({...current,[kind==='logo'?'logo_url':'cover_image_url']:body.path,public_profile_status:'draft',pending_review_at:''}));setImagePreviews(current=>({...current,[kind]:body.previewUrl||''}));setMessage(`${kind==='logo'?'Logo':'Cover image'} uploaded.`)}else setError(body.error||'Image could not be uploaded.');setImageUploading('')};
+  const removeImage=async(kind:'logo'|'cover')=>{setImageUploading(kind);const response=await fetch(`/api/supplier/profile/image?kind=${kind}`,{method:'DELETE'});if(response.ok){setFormData(current=>({...current,[kind==='logo'?'logo_url':'cover_image_url']:'',public_profile_status:'draft',pending_review_at:''}));setImagePreviews(current=>({...current,[kind]:''}))}else{const body=await response.json().catch(()=>({}));setError(body.error||'Image could not be removed.')}setImageUploading('')};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 px-4 py-6">
@@ -650,7 +571,7 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
               Manage your company information, bank account details, contacts, and verification documents.
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <button type="button" onClick={requestClose} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
             Close
           </button>
         </div>
@@ -660,6 +581,16 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
             {loading && <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">Loading supplier company profile...</div>}
             {error && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
             {message && <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">{message}</div>}
+            {fieldErrors.length>0&&<ul className="rounded-xl border border-red-200 bg-red-50 px-6 py-3 text-sm text-red-700">{fieldErrors.map(item=><li key={item} className="list-disc">{item}</li>)}</ul>}
+
+            <section className="rounded-2xl border border-blue-200 bg-gradient-to-br from-blue-950 to-blue-800 p-5 text-white" aria-labelledby="profile-overview-heading">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div><h3 id="profile-overview-heading" className="text-xl font-bold">Profile overview</h3><p className="mt-1 text-blue-100">{formData.company_name||'Supplier Company Profile'}</p></div><span className="w-fit rounded-full border border-white/30 bg-white/10 px-3 py-1 text-sm font-bold">Status: {formData.public_profile_status.replace('_',' ').replace(/\b\w/g,value=>value.toUpperCase())}</span></div>
+              <div className="mt-5"><div className="flex justify-between text-sm font-semibold"><span>Public profile completion</span><span>{completionPercent}%</span></div><div role="progressbar" aria-label={`Public profile completion ${completionPercent}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={completionPercent} className="mt-2 h-3 overflow-hidden rounded-full bg-white/20"><div className="h-full rounded-full bg-cyan-300 transition-all" style={{width:`${completionPercent}%`}}/></div></div>
+              <div className="mt-4 grid gap-4 text-sm md:grid-cols-2"><div><p className="font-bold">Last updated</p><p className="text-blue-100">{formData.updated_at?new Date(formData.updated_at).toLocaleString():'Not saved yet'}</p></div><div><p className="font-bold">Missing required information</p><p className="text-blue-100">{missingRequired.length?missingRequired.join(', '):'All minimum submission fields are complete.'}</p></div></div><p className="mt-4 text-sm text-blue-100">Saving creates a private draft. Public information appears in the Supplier Directory only after a later Admin approval.</p>
+            </section>
+            {formData.public_profile_status==='pending_review'&&<div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm font-semibold text-amber-950">Pending review: your approved public snapshot remains unchanged. Further edits must be saved and resubmitted.</div>}
+            {formData.public_profile_status==='rejected'&&<div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm text-red-900"><strong>Profile returned for changes.</strong>{formData.decision_reason&&<p className="mt-2">Reason: {formData.decision_reason}</p>}<p className="mt-2">Edit the draft, save it, and submit again when ready.</p></div>}
+            {formData.public_profile_status==='suspended'&&<div className="rounded-xl border border-slate-400 bg-slate-100 p-4 text-sm font-semibold text-slate-900">This public profile is suspended. Your data is preserved, but Supplier-side changes and publication are unavailable.</div>}
 
             <section className={sectionClass}>
               <h3 className={sectionTitleClass}>Company Information</h3>
@@ -688,6 +619,7 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
                 <TextField label="Company phone" value={formData.company_phone ?? ''} onChange={(value) => updateProfileField('company_phone', value)} />
                 <TextField label="Company email" value={formData.company_email ?? ''} onChange={(value) => updateProfileField('company_email', value)} type="email" />
                 <TextField label="Years in business" value={formData.years_in_business ?? ''} onChange={(value) => updateProfileField('years_in_business', value)} type="number" />
+                <TextField label="Employee count" value={formData.employee_count} onChange={(value)=>updateProfileField('employee_count',value)} type="number" />
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <TextAreaField label="Legal address" value={formData.legal_address ?? ''} onChange={(value) => updateProfileField('legal_address', value)} />
@@ -697,8 +629,19 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
               </div>
             </section>
 
+            <section className={sectionClass} aria-labelledby="public-profile-heading"><h3 id="public-profile-heading" className={sectionTitleClass}>Public Supplier Profile</h3><p className="mt-1 text-sm text-slate-600">This information may be displayed in the public Supplier Directory after Admin approval.</p><div className="mt-4 grid gap-4 md:grid-cols-2"><TextField label="Public display name" value={formData.public_display_name} onChange={value=>updateProfileField('public_display_name',value)}/><TextField label="Public city" value={formData.public_city} onChange={value=>updateProfileField('public_city',value)}/><TextField label="Supplier type" value={formData.public_supplier_type} onChange={value=>updateProfileField('public_supplier_type',value)}/><TextField label="Public website" value={formData.website} onChange={value=>updateProfileField('website',value)}/><TextAreaField label="Public short description" value={formData.public_short_description} onChange={value=>updateProfileField('public_short_description',value)}/><TextAreaField label="Public product categories" value={formData.public_categories} onChange={value=>updateProfileField('public_categories',value)}/><TextAreaField label="Public full description" value={formData.public_detailed_description} onChange={value=>updateProfileField('public_detailed_description',value)}/><TextAreaField label="Brands / manufacturers" value={formData.public_brands} onChange={value=>updateProfileField('public_brands',value)}/></div>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">{(['logo','cover'] as const).map(kind=><div key={kind} className="rounded-xl border border-slate-200 bg-white p-4"><p className="font-bold text-slate-900">{kind==='logo'?'Company logo':'Public cover image'}</p><div className="mt-3 flex h-40 items-center justify-center overflow-hidden rounded-xl bg-slate-100">{imagePreviews[kind]?<img src={imagePreviews[kind]} alt={kind==='logo'?'Current company logo':'Current public cover'} className="h-full w-full object-contain"/>:<span className="text-sm text-slate-500">No image selected</span>}</div><p className="mt-2 text-xs text-slate-500">PNG or JPEG, maximum 2 MB. Stored privately until Admin approval.</p><div className="mt-3 flex flex-wrap gap-2"><label className="cursor-pointer rounded-lg bg-blue-950 px-3 py-2 text-sm font-bold text-white focus-within:ring-2 focus-within:ring-blue-500">{imagePreviews[kind]?'Replace image':'Choose image'}<input type="file" accept="image/png,image/jpeg" className="sr-only" disabled={Boolean(imageUploading)} onChange={event=>uploadImage(kind,event.target.files?.[0])}/></label>{imagePreviews[kind]&&<button type="button" onClick={()=>removeImage(kind)} disabled={Boolean(imageUploading)} className="rounded-lg border border-red-300 px-3 py-2 text-sm font-bold text-red-700">Remove image</button>}</div>{imageUploading===kind&&<p role="status" className="mt-2 text-sm text-blue-700">Uploading image...</p>}</div>)}</div>
+            </section>
+
+            <section className={sectionClass}><h3 className={sectionTitleClass}>Products and Capabilities</h3><p className="mt-1 text-sm text-slate-600">Describe capabilities only; stock and product rows remain managed in their existing workflows.</p><div className="mt-4 grid gap-4 lg:grid-cols-2"><TagEditor label="Manufacturing capabilities" values={formData.manufacturing_capabilities} onChange={values=>setFormData(current=>({...current,manufacturing_capabilities:values}))}/><TagEditor label="Engineering capabilities" values={formData.engineering_capabilities} onChange={values=>setFormData(current=>({...current,engineering_capabilities:values}))}/><TagEditor label="Testing capabilities" values={formData.testing_capabilities} onChange={values=>setFormData(current=>({...current,testing_capabilities:values}))}/><TagEditor label="Quality-control capabilities" values={formData.quality_control_capabilities} onChange={values=>setFormData(current=>({...current,quality_control_capabilities:values}))}/><TagEditor label="Custom-sourcing capabilities" values={formData.custom_sourcing_capabilities} onChange={values=>setFormData(current=>({...current,custom_sourcing_capabilities:values}))}/><TagEditor label="Additional capabilities" values={formData.additional_capabilities} onChange={values=>setFormData(current=>({...current,additional_capabilities:values}))}/></div></section>
+
+            <section className={sectionClass}><h3 className={sectionTitleClass}>Commercial Terms</h3><p className="mt-1 text-sm text-slate-600">Public terms are indicative and are not binding quotations.</p><div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3"><TextField label="Minimum order value" value={formData.minimum_order_value} onChange={value=>updateProfileField('minimum_order_value',value)} type="number"/><TextField label="Minimum order currency" value={formData.minimum_order_currency} onChange={value=>updateProfileField('minimum_order_currency',value.toUpperCase())}/><TextField label="Response time (hours)" value={formData.response_time_hours} onChange={value=>updateProfileField('response_time_hours',value)} type="number"/><TextField label="Typical lead time minimum (days)" value={formData.typical_lead_time_min_days} onChange={value=>updateProfileField('typical_lead_time_min_days',value)} type="number"/><TextField label="Typical lead time maximum (days)" value={formData.typical_lead_time_max_days} onChange={value=>updateProfileField('typical_lead_time_max_days',value)} type="number"/><TextField label="Preferred currencies (uppercase, comma-separated existing field)" value={formData.preferred_currencies} onChange={value=>updateProfileField('preferred_currencies',value.toUpperCase())}/></div><div className="mt-4 grid gap-4 md:grid-cols-2"><TagEditor label="Public Incoterms" values={formData.public_incoterms} onChange={values=>setFormData(current=>({...current,public_incoterms:values}))} maxItems={20} maxLength={40} uppercase/><TextAreaField label="Public payment terms" value={formData.public_payment_terms} onChange={value=>updateProfileField('public_payment_terms',value)}/></div></section>
+
+            <section className={sectionClass}><h3 className={sectionTitleClass}>Service and Delivery Coverage</h3><div className="mt-4 grid gap-4 md:grid-cols-2"><TagEditor label="Supported languages" values={formData.supported_languages} onChange={values=>setFormData(current=>({...current,supported_languages:values}))} maxItems={20} maxLength={40}/><TextAreaField label="Regions served" value={formData.regions_served} onChange={value=>updateProfileField('regions_served',value)}/><TextAreaField label="Delivery countries" value={formData.delivery_countries} onChange={value=>updateProfileField('delivery_countries',value)}/></div></section>
+
             <section className={sectionClass}>
               <h3 className={sectionTitleClass}>Main Contact</h3>
+              <p className="mt-1 text-sm text-slate-600">Contact information is used by Electron Market for supplier communication and is not automatically published in the public Supplier Directory.</p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <TextField label="Main contact name" value={formData.main_contact_name ?? ''} onChange={(value) => updateProfileField('main_contact_name', value)} />
                 <TextField label="Main contact position" value={formData.main_contact_position ?? ''} onChange={(value) => updateProfileField('main_contact_position', value)} />
@@ -727,7 +670,8 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
             </section>
 
             <section className={sectionClass}>
-              <h3 className={sectionTitleClass}>Bank Account / Payout Details</h3>
+              <h3 className={sectionTitleClass}>Private Banking Information</h3>
+              <p className="mt-1 text-sm font-semibold text-slate-700">Banking information is never displayed in the public Supplier Directory.</p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <TextField label="Bank account holder name" value={formData.bank_account_holder_name ?? ''} onChange={(value) => updateProfileField('bank_account_holder_name', value)} />
                 <TextField label="Bank name" value={formData.bank_name ?? ''} onChange={(value) => updateProfileField('bank_name', value)} />
@@ -745,7 +689,8 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
             </section>
 
             <section className={sectionClass}>
-              <h3 className={sectionTitleClass}>Documents</h3>
+              <h3 className={sectionTitleClass}>Documents and Verification</h3>
+              <p className="mt-1 text-sm text-slate-600">Uploaded legal and verification documents remain private unless Admin explicitly approves a safe public certificate representation in a later phase.</p>
               <div className="mt-4 grid gap-4 md:grid-cols-2">
                 {documentSlots.map((slotConfig) => {
                   const metadata = documents[slotConfig.slot];
@@ -772,14 +717,18 @@ export default function SupplierCompanyProfileModal({ isOpen, onClose, onSaved }
             </section>
           </div>
 
-          <div className="sticky bottom-0 mt-6 flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 bg-white py-4">
-            <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+          <div className="sticky bottom-0 mt-6 flex flex-col items-stretch justify-end gap-3 border-t border-slate-200 bg-white py-4 sm:flex-row sm:items-center">
+            <button type="button" onClick={requestClose} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
               Cancel
             </button>
-            <HubButton type="submit" loading={saving} loadingText="Saving..." disabled={loading}>Save Changes</HubButton>
+            <button ref={previewButtonRef} type="button" onClick={()=>setPreviewOpen(true)} className="rounded-lg border border-blue-900 px-4 py-2.5 text-sm font-bold text-blue-950 focus:outline-none focus:ring-2 focus:ring-blue-500">Preview public profile</button>
+            <HubButton type="submit" loading={saving} loadingText="Saving..." disabled={loading||submitting||formData.public_profile_status==='suspended'}>Save draft</HubButton>
+            <HubButton type="button" onClick={()=>setSubmitOpen(true)} loading={submitting} loadingText="Submitting..." disabled={loading||saving||formData.public_profile_status==='pending_review'||formData.public_profile_status==='suspended'}>Submit for review</HubButton>
           </div>
         </form>
       </div>
+      {previewOpen&&<div role="dialog" aria-modal="true" aria-labelledby="supplier-preview-title" className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4"><div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl bg-white shadow-2xl"><div className="sticky top-0 flex items-center justify-between border-b bg-white p-5"><h3 id="supplier-preview-title" className="text-xl font-bold text-blue-950">Public profile preview</h3><button autoFocus type="button" onClick={()=>{setPreviewOpen(false);previewButtonRef.current?.focus()}} className="rounded-lg border px-3 py-2 font-bold focus:ring-2 focus:ring-blue-500">Close</button></div>{imagePreviews.cover&&<img src={imagePreviews.cover} alt="Public supplier cover preview" className="h-56 w-full object-cover"/>}<div className="p-6">{imagePreviews.logo&&<img src={imagePreviews.logo} alt="Public supplier logo preview" className="mb-4 h-24 w-24 rounded-xl object-contain"/>}<h4 className="text-3xl font-bold text-blue-950">{editableProfile.publicDisplayName||formData.company_name}</h4>{[editableProfile.country,editableProfile.city,editableProfile.supplierType].filter(Boolean).length>0&&<p className="mt-2 text-slate-600">{[editableProfile.country,editableProfile.city,editableProfile.supplierType].filter(Boolean).join(' · ')}</p>}{editableProfile.publicShortDescription&&<p className="mt-5 text-lg font-semibold text-slate-800">{editableProfile.publicShortDescription}</p>}{editableProfile.publicDetailedDescription&&<p className="mt-4 whitespace-pre-wrap text-slate-700">{editableProfile.publicDetailedDescription}</p>}<div className="mt-6 grid gap-4 md:grid-cols-2">{([['Categories',editableProfile.categories],['Brands / manufacturers',editableProfile.brands],['Languages',editableProfile.supportedLanguages.join(', ')],['Capabilities',[...editableProfile.manufacturingCapabilities,...editableProfile.engineeringCapabilities,...editableProfile.testingCapabilities,...editableProfile.qualityControlCapabilities,...editableProfile.customSourcingCapabilities,...editableProfile.additionalCapabilities].join(', ')],['Minimum order',editableProfile.minimumOrderValue===null?'':`${editableProfile.minimumOrderValue} ${editableProfile.minimumOrderCurrency}`],['Typical lead time',editableProfile.typicalLeadTimeMinDays===null&&editableProfile.typicalLeadTimeMaxDays===null?'':`${editableProfile.typicalLeadTimeMinDays??'—'}–${editableProfile.typicalLeadTimeMaxDays??'—'} days`],['Response target',editableProfile.responseTimeHours===null?'':`${editableProfile.responseTimeHours} hours`],['Incoterms',editableProfile.publicIncoterms.join(', ')],['Currencies',editableProfile.preferredCurrencies],['Delivery regions',editableProfile.regionsServed||editableProfile.deliveryCountries],['Public payment terms',editableProfile.publicPaymentTerms]] as [string,string][]).filter(([,value])=>Boolean(value)).map(([label,value])=><div key={label} className="rounded-xl border border-slate-200 p-4"><p className="text-xs font-bold uppercase text-blue-700">{label}</p><p className="mt-2 text-slate-800">{value}</p></div>)}</div></div></div></div>}
+      {submitOpen&&<div role="dialog" aria-modal="true" aria-labelledby="submit-review-title" className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4"><div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl"><h3 id="submit-review-title" className="text-xl font-bold text-blue-950">Submit public profile for review?</h3><p className="mt-3 text-sm text-slate-600">Your valid draft will be saved and marked Pending review. This does not publish or approve the profile.</p>{missingRequired.length>0&&<p className="mt-3 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Still required: {missingRequired.join(', ')}</p>}<div className="mt-6 flex justify-end gap-3"><button autoFocus type="button" onClick={()=>setSubmitOpen(false)} className="rounded-lg border px-4 py-2 font-bold focus:ring-2 focus:ring-blue-500">Cancel</button><button type="button" onClick={confirmSubmit} disabled={missingRequired.length>0} className="rounded-lg bg-blue-950 px-4 py-2 font-bold text-white disabled:opacity-50 focus:ring-2 focus:ring-blue-500">Confirm submission</button></div></div></div>}
     </div>
   );
 }

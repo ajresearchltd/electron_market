@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../../../../lib/supabase/client';
+import { getCanonicalSupplierForAuthenticatedUser } from '../../../../../../lib/suppliers/canonical';
 
 type ItemRow = {
   id: string;
@@ -59,24 +60,10 @@ export default function SupplierProductAvailabilityItemPage() {
   useEffect(() => {
     let active = true;
 
-    const resolveSupplierId = async (userId: string, email?: string) => {
-      const { data: profile } = await supabase
-        .from('supplier_company_profiles')
-        .select('company_name, company_email')
-        .eq('user_id', userId)
-        .maybeSingle();
-      const supplierEmail = profile?.company_email || email || '';
-      if (supplierEmail) {
-        const { data: byContact } = await supabase.from('suppliers').select('supplier_id').eq('contact_email', supplierEmail).maybeSingle();
-        if (byContact?.supplier_id) return byContact.supplier_id as string;
-        const { data: byEmail } = await supabase.from('suppliers').select('supplier_id').eq('email', supplierEmail).maybeSingle();
-        if (byEmail?.supplier_id) return byEmail.supplier_id as string;
-      }
-      if (profile?.company_name) {
-        const { data: byCompany } = await supabase.from('suppliers').select('supplier_id').eq('company_name', profile.company_name).maybeSingle();
-        if (byCompany?.supplier_id) return byCompany.supplier_id as string;
-      }
-      return '';
+    const resolveSupplierId = async (userId: string, _email?: string) => {
+      const { data: current } = await supabase.auth.getUser();
+      if (!current.user || current.user.id !== userId) return '';
+      return (await getCanonicalSupplierForAuthenticatedUser(supabase, current.user))?.canonicalSupplierId || '';
     };
 
     const loadItem = async () => {
@@ -92,6 +79,7 @@ export default function SupplierProductAvailabilityItemPage() {
 
       const supplierId = await resolveSupplierId(authData.user.id, authData.user.email);
       if (!active) return;
+      if (!supplierId) { setError('Your Supplier Company Profile is not linked to a canonical supplier. Complete the profile or contact support.'); setLoading(false); return; }
       if (!supplierId) {
         setError('Upload item not found or access denied.');
         setLoading(false);

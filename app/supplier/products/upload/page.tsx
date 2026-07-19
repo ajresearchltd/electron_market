@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChangeEvent, DragEvent, FormEvent, useMemo, useState } from 'react';
 import { createClient } from '../../../../lib/supabase/client';
+import { getCanonicalSupplierForAuthenticatedUser } from '../../../../lib/suppliers/canonical';
 import HubButton from '../../../components/ui/HubButton';
 
 type UploadForm = {
@@ -234,29 +235,11 @@ export default function SupplierProductUploadPage() {
     if (!form.contactPerson && supplierProfile?.main_contact_name) updateForm('contactPerson', supplierProfile.main_contact_name);
     if (!form.supplierCountry && supplierProfile?.country_name) updateForm('supplierCountry', supplierProfile.country_name);
 
-    if (supplierEmail) {
-      const { data: byContact } = await supabase.from('suppliers').select('supplier_id').eq('contact_email', supplierEmail).maybeSingle();
-      if (byContact?.supplier_id) return byContact.supplier_id as string;
-    }
-    const { data: byCompany } = await supabase.from('suppliers').select('supplier_id').eq('company_name', companyName).maybeSingle();
-    if (byCompany?.supplier_id) return byCompany.supplier_id as string;
-
-    const { data, error: insertError } = await supabase
-      .from('suppliers')
-      .insert({
-        supplier_name: companyName,
-        company_name: companyName,
-        contact_email: supplierEmail || form.contactEmail || null,
-        email: supplierEmail || form.contactEmail || null,
-        contact_phone: supplierProfile?.company_phone || form.contactPhone || null,
-        contact_person: supplierProfile?.main_contact_name || form.contactPerson || null,
-        country: supplierProfile?.country_name || form.supplierCountry || null,
-        supplier_status: 'active',
-      })
-      .select('supplier_id')
-      .single();
-    if (insertError) throw new Error(`Supplier profile: ${insertError.message}`);
-    return data.supplier_id as string;
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user || authData.user.id !== userId) throw new Error('Authentication required.');
+    const canonical = await getCanonicalSupplierForAuthenticatedUser(supabase, authData.user);
+    if (!canonical) throw new Error('Your Supplier Company Profile is not linked to a canonical supplier. Complete the profile or contact support.');
+    return canonical.canonicalSupplierId;
   };
 
   const buildItemRows = (uploadId: string, csvRows: Record<string, string>[], columnMap: Record<string, string>, confidence: Record<string, number>) => {

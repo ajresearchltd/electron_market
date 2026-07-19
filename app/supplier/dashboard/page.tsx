@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import LogoutButton from '../../components/auth/LogoutButton';
 import { createClient } from '../../../lib/supabase/client';
+import { getCanonicalSupplierForAuthenticatedUser } from '../../../lib/suppliers/canonical';
 import SupplierCompanyProfileModal from './components/SupplierCompanyProfileModal';
 
 type RfqOrderRow = {
@@ -511,26 +512,12 @@ export default function SupplierDashboardPage() {
 
         if (!active) return;
 
-        const supplierEmail = supplierProfile?.company_email || dashboardAuthData.user?.email || '';
-        const supplierCompanyName = supplierProfile?.company_name || '';
-        let productSupplierId = '';
-
-        if (supplierEmail) {
-          const { data: supplierByContact } = await supabase.from('suppliers').select('supplier_id').eq('contact_email', supplierEmail).maybeSingle();
-          productSupplierId = supplierByContact?.supplier_id || '';
-          if (!productSupplierId) {
-            const { data: supplierByEmail } = await supabase.from('suppliers').select('supplier_id').eq('email', supplierEmail).maybeSingle();
-            productSupplierId = supplierByEmail?.supplier_id || '';
-          }
-        }
-
-        if (!productSupplierId && supplierCompanyName) {
-          const { data: supplierByCompany } = await supabase.from('suppliers').select('supplier_id').eq('company_name', supplierCompanyName).maybeSingle();
-          productSupplierId = supplierByCompany?.supplier_id || '';
-        }
+        const canonical = dashboardAuthData.user ? await getCanonicalSupplierForAuthenticatedUser(supabase, dashboardAuthData.user).catch(() => null) : null;
+        const productSupplierId = canonical?.canonicalSupplierId || '';
 
         if (!productSupplierId) {
           setAvailabilityUploads([]);
+          setAvailabilityError('Your Supplier Company Profile is not linked to a canonical supplier. Complete the profile or contact support.');
         } else {
           const uploadsResult = await supabase
             .from('supplier_stock_uploads')

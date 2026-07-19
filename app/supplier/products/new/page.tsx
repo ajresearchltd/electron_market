@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../../../lib/supabase/client';
+import { getCanonicalSupplierForAuthenticatedUser } from '../../../../lib/suppliers/canonical';
 import HubButton from '../../../components/ui/HubButton';
 
 type CategoryRow = {
@@ -249,57 +250,12 @@ export default function SupplierAddProductPage() {
     }));
   };
 
-  const resolveSupplierId = async (userId: string, email: string | undefined) => {
-    const { data: profile } = await supabase
-      .from('supplier_company_profiles')
-      .select('company_name, country_name, company_email, company_phone, main_contact_name')
-      .eq('user_id', userId)
-      .maybeSingle();
-
-    const supplierProfile = profile as SupplierProfileRow | null;
-    const supplierEmail = supplierProfile?.company_email || email || '';
-    const companyName = supplierProfile?.company_name || 'Supplier Account';
-
-    if (supplierEmail) {
-      const { data: contactEmailSupplier } = await supabase
-        .from('suppliers')
-        .select('supplier_id')
-        .eq('contact_email', supplierEmail)
-        .maybeSingle();
-      if (contactEmailSupplier?.supplier_id) return contactEmailSupplier.supplier_id as string;
-
-      const { data: emailSupplier } = await supabase
-        .from('suppliers')
-        .select('supplier_id')
-        .eq('email', supplierEmail)
-        .maybeSingle();
-      if (emailSupplier?.supplier_id) return emailSupplier.supplier_id as string;
-    }
-
-    const { data: companySupplier } = await supabase
-      .from('suppliers')
-      .select('supplier_id')
-      .eq('company_name', companyName)
-      .maybeSingle();
-    if (companySupplier?.supplier_id) return companySupplier.supplier_id as string;
-
-    const { data, error: insertError } = await supabase
-      .from('suppliers')
-      .insert({
-        supplier_name: companyName,
-        company_name: companyName,
-        country: supplierProfile?.country_name || null,
-        contact_email: supplierEmail || null,
-        email: supplierEmail || null,
-        contact_phone: supplierProfile?.company_phone || null,
-        contact_person: supplierProfile?.main_contact_name || null,
-        supplier_status: 'active',
-      })
-      .select('supplier_id')
-      .single();
-
-    if (insertError) throw new Error(`Supplier profile: ${insertError.message}`);
-    return data.supplier_id as string;
+  const resolveSupplierId = async (userId: string, _email: string | undefined) => {
+    const { data: authData } = await supabase.auth.getUser();
+    if (!authData.user || authData.user.id !== userId) throw new Error('Authentication required.');
+    const canonical = await getCanonicalSupplierForAuthenticatedUser(supabase, authData.user);
+    if (!canonical) throw new Error('Your Supplier Company Profile is not linked to a canonical supplier. Complete the profile or contact support.');
+    return canonical.canonicalSupplierId;
   };
 
   const uploadImages = async (userId: string, productId: string) => {

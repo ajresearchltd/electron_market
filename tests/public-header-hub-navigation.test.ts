@@ -44,8 +44,8 @@ test('middleware retains cross-role route enforcement', () => {
 test('authenticated public request identity still bypasses guest verification', () => {
   const access = fs.readFileSync('lib/public-request/access.ts', 'utf8');
   const modal = fs.readFileSync('app/components/homepage/RequestEntryModal.tsx', 'utf8');
-  assert.match(access, /kind:'authenticated' as const/);
+  assert.match(access, /kind:\s*'authenticated' as const/);
   assert.match(modal, /if\(value\.kind==='authenticated'\)/);
   assert.match(modal, /else if\(value\.verified\)/);
-  assert.match(modal, /setStep\('selector'\)/);
+  assert.match(modal, /setStep\(requested\?'individual_product':'selector'\)/);
 });

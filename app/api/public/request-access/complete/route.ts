@@ -10,6 +10,6 @@ export async function POST(request: Request) {
     return NextResponse.json(await ensurePasswordlessRequestAccount(user, new URL(request.url).origin), { headers: { 'cache-control': 'private, no-store' } });
   } catch (error) {
     console.error('Passwordless account completion failed.', { userId: user.id, code: 'account_completion_failed' });
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Account setup could not be completed.' }, { status: 409 });
+    return NextResponse.json({ error: 'Account setup could not be completed.', diagnosticCode: 'ACCOUNT_COMPLETION_FAILED' }, { status: 409, headers: { 'cache-control': 'private, no-store' } });
   }
 }

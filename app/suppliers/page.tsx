@@ -1,3 +1,3 @@
-import Header from'../components/homepage/Header';import Footer from'../components/homepage/Footer';import SuppliersDirectory from'./SuppliersDirectory';
-export const metadata={title:'Verified Suppliers | Electron Market',description:'Explore verified component suppliers available through Electron Market.'};
-export default function SuppliersPage(){return <main className="min-h-screen bg-[#f5f8fc] text-slate-950"><Header/><SuppliersDirectory/><Footer/></main>}
+import {Suspense}from'react';import Header from'../components/homepage/Header';import Footer from'../components/homepage/Footer';import SuppliersDirectory from'./SuppliersDirectory';
+export const metadata={title:'Global Supplier Network | Electron Market',description:'Find verified manufacturers, distributors and sourcing partners from around the world.',alternates:{canonical:'/suppliers'},robots:{index:true,follow:true},openGraph:{title:'Global Supplier Network | Electron Market',description:'Find verified manufacturers, distributors and sourcing partners from around the world.',url:'/suppliers',type:'website'}};
+export default function SuppliersPage(){return <main className="min-h-screen overflow-x-hidden bg-[#f5f8fc] text-slate-950"><Header/><Suspense fallback={<div className="mx-auto max-w-[1440px] px-4 py-16">Loading suppliers…</div>}><SuppliersDirectory/></Suspense><Footer/></main>}

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
+import { getCanonicalSupplierForAuthenticatedUser } from '../../../lib/suppliers/canonical';
 
 type ProductRow = {
   product_id: string;
@@ -63,32 +64,14 @@ export default function SupplierProductsPage() {
         return;
       }
 
-      const { data: profile } = await supabase
-        .from('supplier_company_profiles')
-        .select('company_name, company_email')
-        .eq('user_id', authData.user.id)
-        .maybeSingle();
-
-      const supplierProfile = profile as SupplierProfileRow | null;
-      const supplierEmail = supplierProfile?.company_email || authData.user.email || '';
-      const companyName = supplierProfile?.company_name || '';
-      let supplierId = '';
-
-      if (supplierEmail) {
-        const { data: supplierByContact } = await supabase.from('suppliers').select('supplier_id').eq('contact_email', supplierEmail).maybeSingle();
-        supplierId = supplierByContact?.supplier_id || '';
-      }
-
-      if (!supplierId && companyName) {
-        const { data: supplierByCompany } = await supabase.from('suppliers').select('supplier_id').eq('company_name', companyName).maybeSingle();
-        supplierId = supplierByCompany?.supplier_id || '';
-      }
-
-      if (!supplierId) {
+      const canonical = await getCanonicalSupplierForAuthenticatedUser(supabase, authData.user).catch(() => null);
+      if (!canonical) {
+        setError('Your Supplier Company Profile is not linked to a canonical supplier. Complete the profile or contact support.');
         setProducts([]);
         setLoading(false);
         return;
       }
+      const supplierId = canonical.canonicalSupplierId;
 
       const { data, error: queryError } = await supabase
         .from('products')
