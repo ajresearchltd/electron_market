@@ -6,7 +6,7 @@ import { createClient } from '../../../../../../../lib/supabase/server';
 
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
 
-export async function POST(_request: NextRequest, { params }: { params: Promise<{ uploadId: string }> }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ uploadId: string }> }) {
   const { uploadId } = await params;
   const userClient = await createClient();
   const { data: { user } } = await userClient.auth.getUser();
@@ -25,7 +25,9 @@ export async function POST(_request: NextRequest, { params }: { params: Promise<
   if (!chainResult.data) return fail('The procurement chain was not found.', 404);
   if (chainResult.data.customer_user_id !== user.id) return fail('You do not have access to this procurement chain.', 403);
 
-  const result = await database.rpc('create_draft_rfq_from_bom', { p_bom_upload_id: uploadId, p_customer_user_id: user.id });
+  const body = await request.json().catch(() => ({}));
+  const reviewedValues = body?.reviewedValues && typeof body.reviewedValues === 'object' ? body.reviewedValues : {};
+  const result = await database.rpc('create_draft_rfq_from_bom', { p_bom_upload_id: uploadId, p_customer_user_id: user.id, p_reviewed_values: reviewedValues });
   if (result.error) {
     if (result.error.code === '22023') return fail('No eligible BOM items are available. Correct the excluded rows before creating an RFQ.', 422);
     if (result.error.code === 'P0002') return fail(result.error.message.includes('chain') ? 'The procurement chain was not found.' : 'BOM upload not found.', 404);

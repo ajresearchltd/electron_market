@@ -580,7 +580,7 @@ export default function SupplierDashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-100 text-slate-900">
-      <header className="border-b border-slate-800 bg-[#071632] text-white">
+      <header className="sticky top-0 z-40 border-b border-slate-800 bg-[#071632] text-white shadow-lg">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
           <div>
             <p className="text-sm font-medium uppercase tracking-[0.22em] text-cyan-300">Electron Market</p>
@@ -588,21 +588,19 @@ export default function SupplierDashboardPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            {userEmail && (
-              <p className="max-w-[220px] truncate text-sm font-medium text-white" title={userEmail}>
-                {userEmail}
-              </p>
-            )}
-            <div className="text-right">
-              <button
-                type="button"
-                onClick={() => setProfileModalOpen(true)}
-                className="text-sm font-semibold text-white underline-offset-4 hover:text-cyan-200 hover:underline"
-              >
-                {companyName}
-              </button>
-              <p className="text-xs text-slate-300">Supplier account</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setProfileModalOpen(true)}
+              aria-label="Open supplier company profile"
+              className="group w-[380px] min-w-0 max-w-[52vw] rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-right transition hover:border-cyan-300/60 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-300"
+            >
+              <span className="block truncate text-sm font-semibold text-white group-hover:text-cyan-200">{companyName}</span>
+              <span className="flex min-w-0 items-center justify-end gap-2 text-xs">
+                {userEmail && <span className="min-w-0 truncate font-medium text-blue-100" title={userEmail}>{userEmail}</span>}
+                {userEmail && <span aria-hidden="true" className="shrink-0 text-slate-500">·</span>}
+                <span className="shrink-0 text-slate-300">Supplier account</span>
+              </span>
+            </button>
             <span className="inline-flex items-center rounded-full border border-amber-300/40 bg-amber-400/15 px-3 py-1 text-xs font-semibold text-amber-200">
               Pending Verification
             </span>

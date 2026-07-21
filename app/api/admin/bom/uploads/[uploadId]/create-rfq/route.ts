@@ -3,7 +3,7 @@ import { revalidatePath } from 'next/cache';
 import { requireInternalApi } from '../../../../../../../lib/auth/require-internal-api';
 import { reconcilePendingSupplierMessagesForRfq } from '../../../../../../../lib/supplier-email/pipeline';
 
-export async function POST(_: Request, { params }: { params: Promise<{ uploadId: string }> }) {
+export async function POST(request: Request, { params }: { params: Promise<{ uploadId: string }> }) {
   const auth = await requireInternalApi();
   if ('error' in auth) return NextResponse.json({ error: auth.error }, { status: auth.status });
   const { uploadId } = await params;
@@ -11,7 +11,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ uploadId:
   if (upload.error) return NextResponse.json({ error: 'The BOM could not be checked.' }, { status: 500 });
   if (!upload.data) return NextResponse.json({ error: 'BOM upload not found.' }, { status: 404 });
   if (!upload.data.procurement_chain_id) return NextResponse.json({ error: 'The BOM procurement chain was not found.' }, { status: 404 });
-  const result = await auth.admin.rpc('create_draft_rfq_from_bom', { p_bom_upload_id: uploadId, p_customer_user_id: upload.data.user_id });
+  const body = await request.json().catch(() => ({}));
+  const reviewedValues = body?.reviewedValues && typeof body.reviewedValues === 'object' ? body.reviewedValues : {};
+  const result = await auth.admin.rpc('create_draft_rfq_from_bom', { p_bom_upload_id: uploadId, p_customer_user_id: upload.data.user_id, p_reviewed_values: reviewedValues });
   if (result.error) {
     const status = result.error.code === '22023' ? 422 : result.error.code === 'P0002' ? 404 : 500;
     return NextResponse.json({ error: status === 422 ? 'No eligible BOM items are available. Correct the excluded rows before creating an RFQ.' : 'The Draft RFQ could not be created.' }, { status });

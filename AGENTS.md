@@ -18,3 +18,10 @@
 - Prefer `NNN_run_in_supabase_sql_editor_<description>.sql` for manually executed Supabase files.
 - Database SQL files are manual unless the user explicitly authorizes execution.
 - Never execute database SQL automatically.
+
+## Procurement document conversions
+
+- Every procurement-document conversion must follow: source document -> editable conversion draft -> explicit user confirmation -> atomic destination creation.
+- Opening or cancelling a conversion modal must never create or modify a document, relationship, allocation, status, or progress row.
+- Conversion APIs must reload protected ownership and relationship fields server-side, preserve `procurement_chain_id`, reject stale source revisions, and use persistent server-enforced idempotency.
+- Never add a direct one-click conversion mutation. New conversion actions must use the shared editable conversion-modal workflow and a transactional canonical service.

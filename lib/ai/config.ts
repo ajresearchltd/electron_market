@@ -144,7 +144,7 @@ export const resolveOpenAIKey = (config: AiConfig) => {
   return decryptApiKey(config.api_key_encrypted, secret);
 };
 
-export const createOpenAIClient = (apiKey: string) => new OpenAI({ apiKey });
+export const createOpenAIClient = (apiKey: string,options?:{timeout?:number;maxRetries?:number}) => new OpenAI({ apiKey, ...options });
 
 export const buildResponseRequest = (config: AiConfig, message: string, previousResponseId?: string | null) => {
   const request: Record<string, unknown> = {

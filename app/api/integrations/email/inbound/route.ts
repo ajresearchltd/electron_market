@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'crypto';
 import { createAdminClient } from '../../../../../lib/supabase/admin';
 import { ingestInboundEmail, normalizeInboundEmail, parseEml, type NormalizedInboundEmail } from '../../../../../lib/supplier-email/pipeline';
 import {runSupplierEmailQueue} from '../../../../../lib/supplier-email/queue';
+import {associateSupplierReply} from '../../../../../lib/product-finder/responses';
 
 const fail = (error: string, status = 400) => NextResponse.json({ error }, { status });
 export const runtime = 'nodejs';
@@ -49,6 +50,8 @@ export async function POST(request: Request) {
 
   try {
     const result = await ingestInboundEmail(database, inbound.email);
+    const reference=`${inbound.email.subject??''}\n${inbound.email.textBody??''}`.match(/\bPS-[A-F0-9]{10}\b/i)?.[0]?.toUpperCase();
+    if(reference)await associateSupplierReply(database,{inboundMessageId:result.id,reference,body:inbound.email.textBody??'',attachments:(inbound.email.attachments??[]).map((item:any)=>String(item.fileName??'attachment'))});
     if(!result.duplicate){const queued=await database.from('supplier_inbound_messages').update({processing_status:'queued',processing_error:null,locked_at:null}).eq('id',result.id).eq('processing_status','received');if(queued.error)throw new Error('Inbound email was stored but could not be queued.');const processed=await runSupplierEmailQueue(database,1);return NextResponse.json({...result,processing_status:processed.find((row:any)=>row.id===result.id)?.status??'queued',automaticProcessing:true},{status:202})}
     return NextResponse.json({...result,automaticProcessing:false},{status:200});
   } catch (error) { console.error('[inbound-email-webhook]', error); return fail(error instanceof Error ? error.message : 'Inbound email was rejected.', 500); }

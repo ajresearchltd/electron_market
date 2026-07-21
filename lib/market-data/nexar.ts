@@ -25,7 +25,14 @@ export type NexarSearchResult = {
 };
 
 let tokenCache: NexarTokenCache | null = null;
-const nexarFetch=async(url:string,init:RequestInit)=>{let last:unknown;for(let attempt=0;attempt<2;attempt++){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);try{const response=await fetch(url,{...init,signal:controller.signal});if(response.ok||response.status<500&&response.status!==429)return response;last=new Error(`Nexar request returned ${response.status}.`)}catch(error){last=error}finally{clearTimeout(timer)}}throw last instanceof Error?last:new Error('Nexar request failed.')};
+let tokenRefresh: Promise<string> | null = null;
+export type NexarTokenSource = 'client_credentials';
+export class NexarQuotaError extends Error { readonly code='NEXAR_PART_LIMIT_EXCEEDED'; constructor(){super('Nexar product quota is temporarily unavailable.');this.name='NexarQuotaError'} }
+export class NexarAuthorizationError extends Error { readonly code='NEXAR_AUTHORIZATION_FAILED'; constructor(){super('Nexar authorization is unavailable.');this.name='NexarAuthorizationError'} }
+export class NexarApplicationError extends Error { readonly code='NEXAR_APPLICATION_NOT_FOUND'; constructor(){super('Nexar could not resolve the application associated with the access token.');this.name='NexarApplicationError'} }
+export class NexarSchemaError extends Error { readonly code='NEXAR_GRAPHQL_SCHEMA_ERROR'; constructor(){super('Nexar rejected the product query schema.');this.name='NexarSchemaError'} }
+type ResolvedNexarToken={accessToken:string;source:NexarTokenSource};
+const nexarFetch=async(url:string,init:RequestInit,maxAttempts=2)=>{let last:unknown;for(let attempt=0;attempt<maxAttempts;attempt++){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),8000);try{const response=await fetch(url,{...init,signal:controller.signal});if(response.ok||response.status<500&&response.status!==429)return response;last=new Error(`Nexar request returned ${response.status}.`)}catch(error){last=error}finally{clearTimeout(timer)}}throw last instanceof Error?last:new Error('Nexar request failed.')};
 
 const getString = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null);
 const getNumber = (value: unknown) => {
@@ -33,16 +40,12 @@ const getNumber = (value: unknown) => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
-export async function getNexarAccessToken() {
+async function requestNexarAccessToken() {
   const clientId = process.env.NEXAR_CLIENT_ID;
   const clientSecret = process.env.NEXAR_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    throw new Error('Nexar API credentials are not configured. Please set NEXAR_CLIENT_ID and NEXAR_CLIENT_SECRET.');
-  }
-
-  if (tokenCache && tokenCache.expiresAt > Date.now() + 60_000) {
-    return tokenCache.accessToken;
+    throw new Error('Nexar product data service is not configured.');
   }
 
   const body = new URLSearchParams({
@@ -60,7 +63,7 @@ export async function getNexarAccessToken() {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.error_description || payload.error || 'Nexar access token request failed.');
+    throw new Error('Nexar authentication is temporarily unavailable.');
   }
 
   const accessToken = getString(payload.access_token);
@@ -75,25 +78,58 @@ export async function getNexarAccessToken() {
   return accessToken;
 }
 
-export async function nexarGraphqlRequest(query: string, variables: Record<string, unknown>) {
-  const accessToken = await getNexarAccessToken();
-  const response = await nexarFetch('https://api.nexar.com/graphql', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, variables }),
-  });
+async function getOAuthAccessToken() {
+  if (tokenCache && tokenCache.expiresAt > Date.now() + 60_000) return tokenCache.accessToken;
+  if (!tokenRefresh) tokenRefresh = requestNexarAccessToken().finally(() => { tokenRefresh = null; });
+  return tokenRefresh;
+}
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || payload.message || 'Nexar GraphQL request failed.');
+const hasOAuthCredentials=()=>Boolean(getString(process.env.NEXAR_CLIENT_ID)&&getString(process.env.NEXAR_CLIENT_SECRET));
+
+async function resolveNexarAccessToken():Promise<ResolvedNexarToken>{
+  return{accessToken:await getOAuthAccessToken(),source:'client_credentials'};
+}
+
+export async function getNexarAccessToken() {
+  return (await resolveNexarAccessToken()).accessToken;
+}
+
+export function getNexarRuntimeTokenStatus(){
+  const clientIdPresent=Boolean(getString(process.env.NEXAR_CLIENT_ID));
+  const clientSecretPresent=Boolean(getString(process.env.NEXAR_CLIENT_SECRET));
+  return{clientIdPresent,clientSecretPresent,tokenSource:'client_credentials' as NexarTokenSource};
+}
+
+export function resetNexarAuthenticationForTests(){tokenCache=null;tokenRefresh=null}
+
+const nexarErrorCodes=(payload:any)=>Array.isArray(payload?.errors)?payload.errors.map((error:any)=>getString(error?.extensions?.code)||getString(error?.code)||'').filter(Boolean):[];
+const nexarErrorMessages=(payload:any)=>Array.isArray(payload?.errors)?payload.errors.map((error:any)=>String(error?.message??'')):[];
+const isNexarQuotaFailure=(payload:any)=>nexarErrorCodes(payload).includes('PART_LIMIT_EXCEEDED')||(Array.isArray(payload?.errors)&&payload.errors.some((error:any)=>/part limit|quota|exceeded.*limit/i.test(String(error?.message))));
+const isNexarAuthFailure=(response:Response,payload:any)=>response.status===401||response.status===403||nexarErrorCodes(payload).some((code)=>code==='AuthExpiredToken'||code==='AuthInvalidToken')||(Array.isArray(payload?.errors)&&payload.errors.some((error:any)=>/auth|token|unauthor/i.test(String(error?.message))));
+const isNexarApplicationFailure=(payload:any)=>nexarErrorMessages(payload).some(message=>/app fetching error:\s*not found/i.test(message));
+const isNexarSchemaFailure=(payload:any)=>nexarErrorMessages(payload).some(message=>/cannot query field|unknown argument|validation error|variable .* is not defined/i.test(message));
+const hasUsableGraphqlData=(payload:any)=>payload?.data!==null&&payload?.data!==undefined&&Object.values(payload.data).some(value=>value!==null&&value!==undefined);
+const executeGraphql=async(token:ResolvedNexarToken,query:string,variables:Record<string,unknown>)=>{
+  const response=await nexarFetch('https://api.nexar.com/graphql',{method:'POST',headers:{Authorization:`Bearer ${token.accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({query,variables})},1);
+  const payload=await response.json().catch(()=>({}));
+  return{response,payload};
+};
+
+export async function nexarGraphqlRequest(query: string, variables: Record<string, unknown>) {
+  const initialToken=await resolveNexarAccessToken();
+  let {response,payload}=await executeGraphql(initialToken,query,variables);
+  if(isNexarQuotaFailure(payload))throw new NexarQuotaError();
+  if(isNexarAuthFailure(response,payload)){
+    tokenCache=null;
+    if(!hasOAuthCredentials())throw new NexarAuthorizationError();
+    const oauthToken=await resolveNexarAccessToken();
+    ({response,payload}=await executeGraphql(oauthToken,query,variables));
+    if(isNexarQuotaFailure(payload))throw new NexarQuotaError();
+    if(isNexarAuthFailure(response,payload))throw new NexarAuthorizationError();
   }
-  if (Array.isArray(payload.errors) && payload.errors.length > 0) {
-    const message = payload.errors.map((error: any) => error?.message).filter(Boolean).join('; ');
-    throw new Error(message || 'Nexar GraphQL returned errors.');
-  }
+  if(isNexarApplicationFailure(payload))throw new NexarApplicationError();
+  if(isNexarSchemaFailure(payload)&&!hasUsableGraphqlData(payload))throw new NexarSchemaError();
+  if (!response.ok || Array.isArray(payload.errors) && payload.errors.length&&!hasUsableGraphqlData(payload)) throw new Error('Nexar product data request failed.');
   return payload.data;
 }
 

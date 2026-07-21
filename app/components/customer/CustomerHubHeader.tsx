@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createClient } from '../../../lib/supabase/client';
 import CustomerProfileModal from './CustomerProfileModal';
 import HubButton from '../ui/HubButton';
+import ProductFinderModal from '../product-finder/ProductFinderModal';
 
 export type CustomerHeaderIdentity = { email: string; name: string; companyName: string; avatarUrl: string };
 const initials = (value: string) => value.trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'C';
@@ -17,6 +18,7 @@ export default function CustomerHubHeader({ identity: initialIdentity, profileIn
   const [identity, setIdentity] = useState(initialIdentity);
   const [profileOpen, setProfileOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [productFinderOpen, setProductFinderOpen] = useState(false);
   const [passwordOpen,setPasswordOpen]=useState(false),[newPassword,setNewPassword]=useState(''),[confirmPassword,setConfirmPassword]=useState(''),[passwordMessage,setPasswordMessage]=useState(''),[passwordBusy,setPasswordBusy]=useState(false);
 
   useEffect(() => setIdentity(initialIdentity), [initialIdentity]);
@@ -43,6 +45,7 @@ export default function CustomerHubHeader({ identity: initialIdentity, profileIn
       <div className="mx-auto flex max-w-7xl flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div><p className="text-xs font-semibold uppercase tracking-[.25em] text-cyan-300">Electron Market</p><h1 className="mt-1 text-xl font-bold sm:text-2xl">Customer HUB</h1><p className="mt-1 hidden text-xs text-blue-100 sm:block">Manage RFQs, BOM files, supplier quotes, orders, messages, and procurement progress.</p></div>
         <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+          {pathname==='/customer/dashboard'&&<HubButton size="sm" onClick={()=>setProductFinderOpen(true)} ariaLabel="Open Product AI Finder" className="h-9">Product AI Finder</HubButton>}
           <HubButton size="sm" href="/customer/requests" ariaLabel="Open preliminary orders" className="h-9">Preliminary Orders</HubButton>
           <HubButton size="sm" onClick={()=>setPasswordOpen(true)} ariaLabel="Create or update password" className="h-9">Create Password</HubButton>
           <button ref={identityButtonRef} type="button" onClick={() => setProfileOpen(true)} aria-label="Open customer profile" className="hub-identity-button group flex min-w-0 items-center gap-2 rounded-xl border border-white/10 text-left">
@@ -66,6 +69,7 @@ export default function CustomerHubHeader({ identity: initialIdentity, profileIn
         avatarUrl: profile.profile_photo_url === '' ? '' : String(profile.profile_photo_url || current.avatarUrl),
       }))}
     />
+    <ProductFinderModal open={productFinderOpen} mode="customer" onClose={()=>setProductFinderOpen(false)}/>
     {passwordOpen&&<div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-4" role="dialog" aria-modal="true" aria-label="Create password"><div className="w-full max-w-md rounded-2xl bg-white p-6 text-slate-950 shadow-2xl"><h2 className="text-xl font-bold">Create Password</h2><p className="mt-2 text-sm text-slate-600">Your secure email-code login will remain available.</p><label className="mt-4 block text-sm font-semibold">New Password<input type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} minLength={8} className="mt-1 w-full rounded-lg border px-3 py-2"/></label><label className="mt-3 block text-sm font-semibold">Confirm Password<input type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} minLength={8} className="mt-1 w-full rounded-lg border px-3 py-2"/></label>{passwordMessage&&<p className="mt-3 text-sm text-blue-800">{passwordMessage}</p>}<div className="mt-5 flex justify-end gap-2"><HubButton onClick={()=>setPasswordOpen(false)}>Close</HubButton><HubButton onClick={createPassword} loading={passwordBusy} loadingText="Saving...">Save Password</HubButton></div></div></div>}
   </>;
 }

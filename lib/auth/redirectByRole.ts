@@ -1,10 +1,10 @@
-export type AppRole = 'customer' | 'supplier' | 'admin' | 'support';
+export type AppRole = 'customer' | 'supplier' | 'admin' | 'support' | 'procurement';
 
 const normalizeRole = (role?: string | null): AppRole | null => {
   const value = role?.trim().toLowerCase();
   if (!value) return null;
   if (value === 'buyer') return 'customer';
-  if (value === 'customer' || value === 'supplier' || value === 'admin' || value === 'support') return value;
+  if (value === 'customer' || value === 'supplier' || value === 'admin' || value === 'support' || value === 'procurement') return value;
   return null;
 };
 
@@ -15,6 +15,7 @@ export const getDashboardPathByRole = (role?: string | null) => {
     case 'supplier':
       return '/supplier/dashboard';
     case 'admin':
+    case 'procurement':
       return '/admin';
     case 'support':
       return '/admin/supplier-inbox';

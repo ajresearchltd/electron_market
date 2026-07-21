@@ -9,6 +9,8 @@ import DeleteRfqButton from './rfqs/DeleteRfqButton';
 import InvoiceHubTable from '../components/invoices/InvoiceHubTable';
 import PreliminaryOrdersDashboardSection from '../components/admin/PreliminaryOrdersDashboardSection';
 import AdminHubTableViewport from '../components/admin/AdminHubTableViewport';
+import AdminHubHeader from '../components/admin/AdminHubHeader';
+import ProductFinderModal from '../components/product-finder/ProductFinderModal';
 
 type StageKey =
   | 'bom_received'
@@ -1550,6 +1552,7 @@ export default function AdminControlCenterPage() {
   const [showCreateSupplier, setShowCreateSupplier] = useState(false);
   const [showCreateCustomer, setShowCreateCustomer] = useState(false);
   const [showAiConversations, setShowAiConversations] = useState(false);
+  const [productFinderOpen, setProductFinderOpen] = useState(false);
   const [assigningRfq, setAssigningRfq] = useState<RfqRow | null>(null);
   const [selectedSupplierIds, setSelectedSupplierIds] = useState<string[]>([]);
   const [allowAllSuppliers,setAllowAllSuppliers]=useState(true);
@@ -1975,39 +1978,9 @@ export default function AdminControlCenterPage() {
     };
   }, [selectedCustomer, supabase]);
 
-  const avatarInitials = getInitials(adminHeaderProfile.name || adminHeaderProfile.email);
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 text-slate-900">
-      <header className="sticky top-0 z-[80] bg-[#071b3a] px-4 py-4 text-white shadow-lg sm:px-6 lg:px-8">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.25em] text-cyan-300">Electron Market</p>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">Admin HUB</h1>
-            <p className="mt-1 max-w-2xl text-sm text-blue-100">Review RFQs, suppliers, customers, and manually assign buyer RFQs to suppliers.</p>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {adminHeaderProfile.email && (
-              <p className="max-w-[220px] truncate text-sm font-medium text-white" title={adminHeaderProfile.email}>
-                {adminHeaderProfile.email}
-              </p>
-            )}
-            {adminHeaderProfile.avatarUrl ? (
-              <img src={adminHeaderProfile.avatarUrl} alt="" className="h-12 w-12 rounded-full border border-white/30 object-cover" />
-            ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/30 bg-blue-600 text-sm font-bold text-white">{avatarInitials}</div>
-            )}
-            <div className="min-w-0">
-              <p className="max-w-48 truncate text-sm font-semibold">{adminHeaderProfile.name}</p>
-              <p className="max-w-48 truncate text-xs text-blue-100">{adminHeaderProfile.companyName}</p>
-              {headerError && <p className="max-w-64 text-xs text-amber-200">{headerError}</p>}
-            </div>
-            <Link href="/admin/preliminary-orders" className="admin-primary-button admin-primary-button-compact">Preliminary Orders</Link>
-            <Link href="/" className="admin-primary-button admin-primary-button-compact">Home</Link>
-            <button type="button" onClick={signOutAdmin} className="admin-primary-button admin-primary-button-compact">Sign out</button>
-          </div>
-        </div>
-      </header>
+      <AdminHubHeader showPreliminaryOrders={false} />
 
       <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
 
@@ -2026,6 +1999,14 @@ export default function AdminControlCenterPage() {
             </div>
           ))}
         </section>
+
+        <nav aria-label="Admin HUB primary actions" className="flex flex-wrap gap-3">
+          <button type="button" onClick={() => setProductFinderOpen(true)} className="admin-primary-button">Product AI Finder</button>
+          <Link href="/admin/product-finder-ai-config" className="admin-primary-button">AI Product Finder Settings</Link>
+          <Link href="/admin/preliminary-orders" className="admin-primary-button">Preliminary Orders</Link>
+        </nav>
+
+        <ProductFinderModal open={productFinderOpen} mode="admin" onClose={() => setProductFinderOpen(false)} />
 
         <SectionCard title="Procurement Progress">
           <AdminHubTableViewport label="Latest RFQs">
@@ -2238,15 +2219,10 @@ export default function AdminControlCenterPage() {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {[
                 { label: 'Main Table', href: '/admin/homepage-content' },
-                { label: 'How It Works', href: '/admin/how-it-works' },
-                { label: 'Categories', href: '/admin/categories' },
                 { label: 'Supplier Inbox', href: '/admin/supplier-inbox' },
-                { label: 'Discount Prices', href: '/admin/discount-prices' },
                 { label: 'AI config', href: '/admin/ai-config' },
                 { label: 'AI PROMPT', href: '/admin/ai-prompt' },
                 { label: 'Octopart request', href: '/admin/octopart-requests' },
-                { label: 'Verified Suppliers', href: '/admin/verified-suppliers' },
-                { label: 'Industry Solutions', href: '/admin/industry-solutions' },
               ].map((action) => (
                 <Link key={action.href} href={action.href} className="admin-primary-button admin-primary-button-compact text-center">
                   {action.label}

@@ -88,5 +88,5 @@ test('Admin and Customer retain canonical Preliminary Order visibility', () => {
   assert.match(admin, /public_sourcing_enquiries/);
   assert.match(admin, /JSON\.stringify\(payload,null,2\)/);
   assert.match(customer, /public_sourcing_enquiries/);
-  assert.match(customer, /eq\('customer_user_id', user\.id\)/);
+  assert.match(customer, /eq\('customer_user_id',\s*user\.id\)/);
 });

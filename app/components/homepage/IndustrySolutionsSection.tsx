@@ -92,7 +92,7 @@ export default function IndustrySolutionsSection() {
                 </div>
                 <div className="flex min-h-0 flex-1 flex-col p-3 pb-3 text-center">
                   <h3 className="break-words text-sm font-bold leading-5 text-blue-700">{solution.title || 'Industry Solution'}</h3>
-                  {solution.product_summary && <p className="mt-1.5 break-words text-xs font-medium leading-4 text-slate-900">{solution.product_summary}</p>}
+                  {solution.product_summary && <p className="mt-1.5 break-words pb-3 text-right text-xs font-medium leading-5 text-black">{solution.product_summary}</p>}
                 </div>
               </article></Link>
             );

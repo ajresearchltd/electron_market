@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+[aria-label="Product Finder conversation"] p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -408,6 +413,12 @@ a {
   width: 2.5rem;
   border-radius: 0.75rem;
   padding: 0;
+}
+
+/* The public homepage's former 10px minimum is 3px larger; larger levels are unchanged. */
+.public-homepage-scope .text-\[10px\] {
+  font-size: 13px;
+  line-height: 1.25rem;
 }
 
 /* The request selector needs room for four illustrated service cards. */

@@ -12,7 +12,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ rfq
   if (!evaluation.data.ready) return NextResponse.json({ error: evaluation.data.message, readiness:evaluation.data }, { status: 422 });
   const suppliedKey=String(body.idempotencyKey??'').trim();const idempotencyKey=suppliedKey||`rfq-invoice:${rfqId}:${randomUUID()}`;
   if(idempotencyKey.length>200)return NextResponse.json({error:'Invalid idempotency key.'},{status:400});
-  const result = await auth.admin.rpc('create_draft_invoice_from_rfq', { p_rfq_id: rfqId, p_actor_id: auth.user.id, p_execution_mode: 'manual', p_idempotency_key: idempotencyKey });
+  const reviewedValues=body?.reviewedValues&&typeof body.reviewedValues==='object'?body.reviewedValues:{};
+  const result = await auth.admin.rpc('create_draft_invoice_from_rfq', { p_rfq_id: rfqId, p_actor_id: auth.user.id, p_execution_mode: 'manual', p_idempotency_key: idempotencyKey, p_reviewed_values:reviewedValues });
   if (result.error) { const status = result.error.code === '22023' ? 422 : result.error.code === 'P0002' ? 404 : result.error.code === '42501' ? 403 : result.error.code==='23505' ? 409 : 500; return NextResponse.json({ error: status === 422||status===409 ? result.error.message : 'Draft Invoice could not be created.', readiness: status === 422 ? evaluation.data : undefined }, { status }); }
   const invoice = Array.isArray(result.data) ? result.data[0] : result.data;
   const header=invoice?.invoice_id?await auth.admin.from('procurement_invoices').select('id,invoice_number,invoice_sequence,procurement_chain_id,procurement_number,invoice_status,supplier_user_id,currency,total_amount,generated_at').eq('id',invoice.invoice_id).maybeSingle():{data:null,error:null};

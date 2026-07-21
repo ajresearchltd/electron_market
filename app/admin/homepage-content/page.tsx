@@ -1,10 +1,13 @@
 'use client';
 
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { createClient } from '../../../lib/supabase/client';
 import { createDefaultHomepageVisibility, HOMEPAGE_SECTIONS, type HomepageSectionKey } from '../../../lib/homepage/sections';
 import HubButton from '../../components/ui/HubButton';
 import WebsiteFooterEditor from './WebsiteFooterEditor';
+import AdminHubHeader from '../../components/admin/AdminHubHeader';
+import WhyBuyersDetailsEditor from './WhyBuyersDetailsEditor';
 
 type FieldConfig = { key: string; label: string };
 type FieldGroup = { title: string; description: string; fields: FieldConfig[]; sectionKey?: HomepageSectionKey };
@@ -123,9 +126,15 @@ const imageFieldKeys = fieldKeys.filter((key) => /pic|logo|image/i.test(key));
 const textareaPattern = /description|text|deviz|subtitle/i;
 const acceptedImageTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
 const maxImageSize = 2 * 1024 * 1024;
-const bucketName = 'homepage-icons';
-const bucketErrorMessage = 'Supabase Storage bucket homepage-icons is missing or not public, or upload policy is missing.';
 const selectFields = ['homepage_content_id', ...fieldKeys].join(', ');
+
+const managementActions: Partial<Record<HomepageSectionKey, { label: string; href: string }>> = {
+  how_it_works: { label: 'Manage How It Works', href: '/admin/how-it-works' },
+  categories: { label: 'Manage Categories', href: '/admin/categories' },
+  marketing_discounts: { label: 'Manage Discount Prices', href: '/admin/discount-prices' },
+  top_verified_suppliers: { label: 'Manage Verified Suppliers', href: '/admin/verified-suppliers' },
+  industry_solutions: { label: 'Manage Industry Solutions', href: '/admin/industry-solutions' },
+};
 
 const emptyForm = fieldKeys.reduce<Record<string, string>>((current, key) => {
   current[key] = '';
@@ -150,21 +159,20 @@ const toNullable = (value: string) => {
   return trimmed.length > 0 ? trimmed : null;
 };
 const isImageLikeField = (key: string) => imageFieldKeys.includes(key);
+const isWhyBuyersPhotoField = (key: string) => /^section_5_pic_[1-6]$/.test(key);
 const isImagePreviewPath = (value: string) => {
   const trimmed = value.trim().toLowerCase();
   return trimmed.startsWith('blob:') || /\.(png|jpe?g|webp|svg)(\?.*)?$/.test(trimmed) || trimmed.includes('/storage/v1/object/public/');
 };
-const sanitizeFileName = (name: string) => name.toLowerCase().replace(/[^a-z0-9.]+/g, '-').replace(/^-+|-+$/g, '');
-
-function ImagePreview({ src }: { src: string }) {
+function ImagePreview({ src, photo = false }: { src: string; photo?: boolean }) {
   return (
-    <div className="mt-3 flex h-24 w-24 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
+    <div className={`mt-3 flex items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-50 ${photo ? 'min-h-[180px] w-full max-w-md' : 'h-24 w-24'}`}>
       {src && isImagePreviewPath(src) ? (
-        <img src={src} alt="Homepage content preview" className="h-20 w-20 object-contain" />
+        <img src={src} alt={photo ? 'Why Buyers card photo preview' : 'Homepage content preview'} className={photo ? 'h-[180px] w-full object-cover object-center' : 'h-20 w-20 object-contain'} />
       ) : src ? (
         <span className="px-2 text-center text-xs font-semibold text-slate-600">{src}</span>
       ) : (
-        <span className="px-2 text-center text-xs text-slate-400">No image selected</span>
+        <span className="px-2 text-center text-xs text-slate-400">{photo ? 'Photo not uploaded' : 'No image selected'}</span>
       )}
     </div>
   );
@@ -178,6 +186,7 @@ type HomepageAdminSectionHeaderProps = {
   savedIsEnabled: boolean;
   isSaving: boolean;
   disabled: boolean;
+  action?: { label: string; href: string };
   onEnabledChange: (sectionKey: HomepageSectionKey, isEnabled: boolean) => void;
 };
 
@@ -189,6 +198,7 @@ function HomepageAdminSectionHeader({
   savedIsEnabled,
   isSaving,
   disabled,
+  action,
   onEnabledChange,
 }: HomepageAdminSectionHeaderProps) {
   const isSaved = isEnabled === savedIsEnabled;
@@ -204,7 +214,8 @@ function HomepageAdminSectionHeader({
         </div>
         <p className="mt-1 text-sm text-slate-500">{description}</p>
       </div>
-      <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 self-start rounded-lg bg-violet-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 focus-within:ring-2 focus-within:ring-blue-300 focus-within:ring-offset-2 sm:self-auto">
+      <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+      <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 rounded-lg bg-violet-700 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-blue-600 focus-within:ring-2 focus-within:ring-blue-300 focus-within:ring-offset-2">
         <input
           type="checkbox"
           checked={isEnabled}
@@ -215,6 +226,8 @@ function HomepageAdminSectionHeader({
         />
         Show on homepage
       </label>
+      {action && <Link href={action.href} className="admin-primary-button admin-primary-button-compact whitespace-nowrap">{action.label}</Link>}
+      </div>
     </div>
   );
 }
@@ -234,9 +247,11 @@ export default function AdminHomepageContentPage() {
   const [visibilityLoading, setVisibilityLoading] = useState(true);
   const [savingSection, setSavingSection] = useState<HomepageSectionKey | null>(null);
   const [visibilityError, setVisibilityError] = useState<string | null>(null);
+  const [whyBuyersVisibility, setWhyBuyersVisibility] = useState<boolean[]>(Array<boolean>(6).fill(true));
+  const [whyBuyersVisibilityLoading, setWhyBuyersVisibilityLoading] = useState(true);
+  const [popupDetailsCard, setPopupDetailsCard] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>('Select a language, then load or create its homepage_content row.');
-  const [debugStatus, setDebugStatus] = useState({ rowId: '-', language: 'English', lastSavedAt: '-', lastAction: 'None', lastStatus: 'Idle', lastError: '', result: 'No save yet', payloadName1: '-', payloadText1: '-', returnedName1: '-', returnedText1: '-' });
 
   const revokeBlobPreviews = (previewMap: Record<string, string>) => {
     Object.values(previewMap).forEach((value) => {
@@ -253,17 +268,14 @@ export default function AdminHomepageContentPage() {
   const clearLoadedRow = (language: string) => {
     setLoadedRow(null);
     setFormData({ ...emptyForm, [languageField]: language });
-    setDebugStatus((current) => ({ ...current, rowId: '-', language, result: 'No row loaded' }));
     resetUploads();
   };
 
-  const hydrateSavedRow = (row: Record<string, string | null>, result: string, savedAt?: string) => {
-    const rowId = String(row.homepage_content_id ?? '');
+  const hydrateSavedRow = (row: Record<string, string | null>, _result: string, _savedAt?: string) => {
     const language = row[languageField] ?? selectedLanguage;
     setLoadedRow(row as HomepageContentRow);
     setSelectedLanguage(language);
     setFormData(rowToFormData(row));
-    setDebugStatus((current) => ({ ...current, rowId: rowId || '-', language, lastSavedAt: savedAt ?? current.lastSavedAt, lastAction: result, lastStatus: result, lastError: '', result, returnedName1: row.section_2_name_1 ?? '-', returnedText1: row.section_2_text_1 ?? '-' }));
     resetUploads();
   };
 
@@ -271,7 +283,6 @@ export default function AdminHomepageContentPage() {
     const language = (languageOverride ?? formData[languageField] ?? selectedLanguage).trim();
     if (!language) {
       setError('Select language first.');
-      setDebugStatus((current) => ({ ...current, result: 'Select language first.' }));
       return;
     }
 
@@ -303,12 +314,29 @@ export default function AdminHomepageContentPage() {
 
   const handleLoadLanguage = async () => {
     setNotice('Load button clicked');
-    setDebugStatus((current) => ({ ...current, lastAction: 'Load button clicked', lastStatus: 'Load button clicked', lastError: '', result: 'Load button clicked', language: selectedLanguage || current.language }));
     await loadContentByLanguage(undefined, 'Language content loaded successfully');
   };
 
   useEffect(() => {
     return () => revokeBlobPreviews(previews);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    void (async () => {
+      setWhyBuyersVisibilityLoading(true);
+      try {
+        const response = await fetch('/api/admin/homepage-content/save', { cache: 'no-store' });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok || !Array.isArray(result.visibility)) throw new Error(result.error || 'Why Buyers card visibility could not be loaded.');
+        if (active) setWhyBuyersVisibility(result.visibility.map(Boolean).slice(0, 6));
+      } catch (loadError) {
+        if (active) setVisibilityError(loadError instanceof Error ? loadError.message : 'Why Buyers card visibility could not be loaded.');
+      } finally {
+        if (active) setWhyBuyersVisibilityLoading(false);
+      }
+    })();
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -360,19 +388,16 @@ export default function AdminHomepageContentPage() {
 
   const createContentRow = async () => {
     setNotice('Create button clicked');
-    setDebugStatus((current) => ({ ...current, lastAction: 'Create button clicked', lastStatus: 'Create button clicked', lastError: '', result: 'Create button clicked', language: selectedLanguage || current.language }));
 
     const language = (formData[languageField] || selectedLanguage).trim();
     if (!language) {
       setError('Select language first.');
-      setDebugStatus((current) => ({ ...current, lastStatus: 'Select language first.', lastError: 'Select language first.', result: 'Select language first.' }));
       return;
     }
 
     setCreating(true);
     setError(null);
     setNotice('Creating homepage_content row...');
-    setDebugStatus((current) => ({ ...current, lastAction: 'Create homepage_content row', lastStatus: 'Creating homepage_content row...', lastError: '', result: 'Creating homepage_content row...', language }));
 
     const { data: insertedRow, error: insertError } = await supabase
       .from('homepage_content')
@@ -382,7 +407,7 @@ export default function AdminHomepageContentPage() {
 
     if (insertError) {
       setError(insertError.message);
-      setDebugStatus((current) => ({ ...current, lastStatus: insertError.message, lastError: insertError.message, result: insertError.message }));
+      setError('Homepage content could not be created. Please try again.');
     } else {
       hydrateSavedRow(insertedRow as unknown as Record<string, string | null>, 'Created successfully', new Date().toLocaleString());
       setNotice('Created successfully');
@@ -407,8 +432,9 @@ export default function AdminHomepageContentPage() {
     }
   };
 
-  const validateImageFile = (file: File) => {
+  const validateImageFile = (file: File, key: string) => {
     if (!acceptedImageTypes.includes(file.type)) return 'Please select a PNG, JPEG, WebP, or SVG image.';
+    if (isWhyBuyersPhotoField(key) && file.type === 'image/svg+xml') return 'Please select a PNG, JPEG, or WebP photograph.';
     if (file.size > maxImageSize) return 'Image must be 2 MB or smaller.';
     return null;
   };
@@ -417,7 +443,7 @@ export default function AdminHomepageContentPage() {
     const file = event.target.files?.[0] ?? null;
     if (!file) return;
 
-    const validationError = validateImageFile(file);
+    const validationError = validateImageFile(file, key);
     if (validationError) {
       setError(validationError);
       event.target.value = '';
@@ -432,43 +458,24 @@ export default function AdminHomepageContentPage() {
     });
   };
 
-  const uploadImageField = async (key: string, file: File) => {
-    const extension = file.name.includes('.') ? file.name.split('.').pop() : 'img';
-    const baseName = sanitizeFileName(file.name.replace(/\.[^.]+$/, '')) || 'homepage-icon';
-    const path = `homepage-content/${key}/${Date.now()}-${baseName}.${extension}`;
-
-    const { data, error: uploadError } = await supabase.storage
-      .from(bucketName)
-      .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type });
-
-    if (uploadError) throw new Error(`${bucketErrorMessage} ${uploadError.message}`);
-
-    const { data: publicUrlData } = supabase.storage.from(bucketName).getPublicUrl(data.path);
-    return publicUrlData.publicUrl || data.path;
-  };
-
   const saveContent = async () => {
     setNotice('Save button clicked');
-    setDebugStatus((current) => ({ ...current, lastAction: 'Save button clicked', lastStatus: 'Save button clicked', lastError: '', result: 'Save button clicked', language: selectedLanguage || current.language }));
 
     const language = (formData[languageField] || selectedLanguage).trim();
     if (!language) {
       setError('Select language first.');
-      setDebugStatus((current) => ({ ...current, lastStatus: 'Select language first.', lastError: 'Select language first.', result: 'Select language first.' }));
       return;
     }
 
     setSaving(true);
     setError(null);
-    setNotice('Saving homepage_content...');
-    setDebugStatus((current) => ({ ...current, lastAction: 'Save homepage_content', lastStatus: 'Saving homepage_content...', lastError: '', result: 'Saving homepage_content...', language }));
+    setNotice('Saving…');
 
     try {
       if (!loadedRow?.homepage_content_id) {
         const message = 'No homepage_content row loaded. Load or create language row first.';
         setError(message);
         setNotice(message);
-        setDebugStatus((current) => ({ ...current, lastStatus: message, lastError: message, result: message }));
         return;
       }
 
@@ -476,31 +483,24 @@ export default function AdminHomepageContentPage() {
         current[key] = toNullable(formData[key] ?? '');
         return current;
       }, {});
-      setDebugStatus((current) => ({ ...current, payloadName1: String(payload.section_2_name_1 ?? '-'), payloadText1: String(payload.section_2_text_1 ?? '-'), lastStatus: 'Payload built from formData', result: 'Payload built from formData' }));
-
+      const requestBody = new FormData();
+      requestBody.set('homepageContentId', loadedRow.homepage_content_id);
+      requestBody.set('payload', JSON.stringify(payload));
+      requestBody.set('whyBuyersVisibility', JSON.stringify(whyBuyersVisibility));
       for (const key of imageFieldKeys) {
         const file = files[key];
-        if (file) {
-          const publicUrl = await uploadImageField(key, file);
-          payload[key] = publicUrl;
-          updateField(key, publicUrl);
-        }
+        if (file) requestBody.set(`file:${key}`, file);
       }
-
-      const { data: updatedRow, error: updateError } = await supabase
-        .from('homepage_content')
-        .update(payload)
-        .eq('homepage_content_id', loadedRow.homepage_content_id)
-        .select(selectFields)
-        .single();
-      if (updateError) throw new Error(updateError.message);
-      if (!updatedRow) throw new Error('Save failed: no row was updated.');
-      hydrateSavedRow(updatedRow as unknown as Record<string, string | null>, 'Saved successfully', new Date().toLocaleString());
+      const response = await fetch('/api/admin/homepage-content/save', { method: 'PATCH', body: requestBody });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || !result.row) throw new Error(result.error || 'Homepage content could not be saved. Please try again.');
+      if (Array.isArray(result.whyBuyersVisibility)) setWhyBuyersVisibility(result.whyBuyersVisibility.map(Boolean).slice(0, 6));
+      hydrateSavedRow(result.row as Record<string, string | null>, 'Saved successfully', new Date().toLocaleString());
       setNotice('Saved successfully');
     } catch (saveError) {
-      const message = saveError instanceof Error ? saveError.message : 'Failed to save homepage content.';
+      const message = saveError instanceof Error ? saveError.message : 'Homepage content could not be saved. Please try again.';
       setError(message);
-      setDebugStatus((current) => ({ ...current, lastStatus: message, lastError: message, result: message }));
+      setNotice(message.includes('image') ? 'Upload failed' : 'Save failed');
     } finally {
       setSaving(false);
     }
@@ -509,38 +509,12 @@ export default function AdminHomepageContentPage() {
   const editingLanguage = formData[languageField] || selectedLanguage;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.35),transparent_30%),linear-gradient(135deg,#061b3f_0%,#082a63_48%,#071632_100%)] py-10 text-white">
-      <div className="mx-auto max-w-[1200px] px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <p className="mb-3 inline-flex rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800">
-            Temporary admin page. Authentication will be added later.
-          </p>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Homepage Content Admin</h1>
-          <p className="mt-2 text-blue-100">Manage language-specific homepage_content records for non-table homepage sections.</p>
-          <p className="mt-1 text-sm text-blue-200">Image-like fields are detected by pic, logo, image, or link in the field name.</p>
-        </div>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.35),transparent_30%),linear-gradient(135deg,#061b3f_0%,#082a63_48%,#071632_100%)] text-white">
+      <AdminHubHeader title="Homepage Content Admin" description="Manage language-specific homepage content and section visibility." />
+      <div className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6 lg:px-8">
 
         {error && <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
         {notice && <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">{notice}</div>}
-
-        <section className="mb-8 rounded-xl border border-slate-200 bg-white p-4 text-slate-950 shadow-xl shadow-blue-950/20">
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">Temporary save debug</h2>
-          <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <div><span className="font-semibold text-slate-700">Selected language:</span><br />{selectedLanguage || '-'}</div>
-            <div><span className="font-semibold text-slate-700">Loaded row ID:</span><br />{debugStatus.rowId}</div>
-            <div><span className="font-semibold text-slate-700">Last action:</span><br />{debugStatus.lastAction}</div>
-            <div><span className="font-semibold text-slate-700">Last status:</span><br />{debugStatus.lastStatus}</div>
-            <div><span className="font-semibold text-slate-700">Last Supabase error:</span><br />{debugStatus.lastError || '-'}</div>
-            <div><span className="font-semibold text-slate-700">Last saved:</span><br />{debugStatus.lastSavedAt}</div>
-            <div><span className="font-semibold text-slate-700">Loaded language:</span><br />{debugStatus.language}</div>
-            <div><span className="font-semibold text-slate-700">local formData section_2_name_1:</span><br />{formData.section_2_name_1 || '-'}</div>
-            <div><span className="font-semibold text-slate-700">local formData section_2_text_1:</span><br />{formData.section_2_text_1 || '-'}</div>
-            <div><span className="font-semibold text-slate-700">payload section_2_name_1:</span><br />{debugStatus.payloadName1}</div>
-            <div><span className="font-semibold text-slate-700">payload section_2_text_1:</span><br />{debugStatus.payloadText1}</div>
-            <div><span className="font-semibold text-slate-700">returned section_2_name_1:</span><br />{debugStatus.returnedName1}</div>
-            <div><span className="font-semibold text-slate-700">returned section_2_text_1:</span><br />{debugStatus.returnedText1}</div>
-          </div>
-        </section>
 
         <section className="mb-8 rounded-xl border border-slate-200 bg-white p-6 text-slate-950 shadow-xl shadow-blue-950/20">
           <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
@@ -597,16 +571,47 @@ export default function AdminHomepageContentPage() {
                     savedIsEnabled={savedVisibility[section.key]}
                     isSaving={savingSection === section.key}
                     disabled={visibilityLoading || savingSection !== null}
+                    action={managementActions[section.key]}
                     onEnabledChange={updateSectionVisibility}
                   />
-                  {group && (
+                  {section.key === 'why_buyers' && whyBuyersVisibility.every((isEnabled) => !isEnabled) && <p role="alert" className="mt-5 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">No cards are currently selected for display on the homepage.</p>}
+                  {section.key === 'why_buyers' && <div className="mt-6 space-y-5">
+                    <div className="grid gap-5 md:grid-cols-2">
+                      <label className="block"><span className="text-sm font-semibold text-slate-700">section_5_title</span><input value={formData.section_5_title ?? ''} onChange={(event) => updateField('section_5_title', event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" /></label>
+                      <label className="block"><span className="text-sm font-semibold text-slate-700">section_5_description</span><textarea value={formData.section_5_description ?? ''} onChange={(event) => updateField('section_5_description', event.target.value)} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" /></label>
+                    </div>
+                    {Array.from({ length: 6 }, (_, cardIndex) => {
+                      const cardNumber = cardIndex + 1;
+                      const nameKey = `section_5_name_${cardNumber}`;
+                      const textKey = `section_5_text_${cardNumber}`;
+                      const picKey = `section_5_pic_${cardNumber}`;
+                      const currentTitle = formData[nameKey]?.trim();
+                      return <section key={cardNumber} data-why-buyers-card-editor={cardNumber} className="overflow-hidden rounded-xl border border-slate-300 bg-slate-50/70">
+                        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+                          <h3 className="min-w-0 break-words text-base font-bold text-slate-950">Card {cardNumber}{currentTitle ? ` — ${currentTitle}` : ''}</h3>
+                          <div className="flex flex-wrap items-center gap-2"><label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-900"><input type="checkbox" aria-label={`Show Card ${cardNumber} on homepage`} checked={whyBuyersVisibility[cardIndex]} disabled={whyBuyersVisibilityLoading || saving} onChange={(event) => setWhyBuyersVisibility((current) => current.map((value, index) => index === cardIndex ? event.target.checked : value))} className="h-5 w-5 accent-violet-700" />Show on homepage</label><button type="button" disabled={!loadedRow?.homepage_content_id} onClick={()=>setPopupDetailsCard(cardNumber)} className="rounded-lg border border-blue-300 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-800 disabled:cursor-not-allowed disabled:opacity-50">Edit popup details</button></div>
+                        </header>
+                        <div className="grid gap-5 p-4 md:grid-cols-2">
+                          <label className="block"><span className="text-sm font-semibold text-slate-700">Title</span><input value={formData[nameKey] ?? ''} onChange={(event) => updateField(nameKey, event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" /></label>
+                          <label className="block"><span className="text-sm font-semibold text-slate-700">Description</span><textarea value={formData[textKey] ?? ''} onChange={(event) => updateField(textKey, event.target.value)} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" /></label>
+                          <div className="md:col-span-2"><label className="block"><span className="text-sm font-semibold text-slate-700">Photo URL / path</span><input value={formData[picKey] ?? ''} onChange={(event) => updateField(picKey, event.target.value)} className="mt-1 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" placeholder="Homepage photo URL or storage path" /></label>
+                            <label className="mt-3 inline-flex cursor-pointer rounded-md border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">{previews[picKey] || formData[picKey] ? 'Replace Photo' : 'Choose Photo'}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={handleFileChange(picKey)} className="sr-only" /></label>
+                            <p className="mt-2 text-xs text-slate-500">PNG, JPG/JPEG, or WebP | maximum 2 MB.{files[picKey] ? ' Selected and ready to upload when you save.' : ''}</p>
+                            <ImagePreview src={previews[picKey] || formData[picKey] || ''} photo />
+                          </div>
+                        </div>
+                      </section>;
+                    })}
+                  </div>}
+                  {group && section.key !== 'why_buyers' && (
                     <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
                       {group.fields.map((field) => {
                         const imageLike = isImageLikeField(field.key);
+                        const whyBuyersPhoto = isWhyBuyersPhotoField(field.key);
                         const textarea = textareaPattern.test(field.key);
                         return (
                           <label key={field.key} className={textarea ? 'block md:col-span-2' : 'block'}>
-                        <span className="text-sm font-semibold text-slate-700">{field.label}</span>
+                        <span className="text-sm font-semibold text-slate-700">{whyBuyersPhoto ? `Card ${field.key.slice(-1)} photograph` : field.label}</span>
                         {textarea ? (
                           <textarea value={formData[field.key] ?? ''} onChange={(event) => updateField(field.key, event.target.value)} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
                         ) : (
@@ -615,10 +620,11 @@ export default function AdminHomepageContentPage() {
                         {imageLike && (
                           <div>
                             <label className="mt-3 inline-flex cursor-pointer rounded-md border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
-                              Upload image/icon
-                              <input type="file" accept={acceptedImageTypes.join(',')} onChange={handleFileChange(field.key)} className="sr-only" />
+                              {previews[field.key] || formData[field.key] ? (whyBuyersPhoto ? 'Replace Photo' : 'Replace image/icon') : (whyBuyersPhoto ? 'Choose Photo' : 'Upload image/icon')}
+                              <input type="file" accept={(whyBuyersPhoto ? acceptedImageTypes.filter((type) => type !== 'image/svg+xml') : acceptedImageTypes).join(',')} onChange={handleFileChange(field.key)} className="sr-only" />
                             </label>
-                            <ImagePreview src={previews[field.key] || formData[field.key] || ''} />
+                            {whyBuyersPhoto && <p className="mt-2 text-xs text-slate-500">PNG, JPG/JPEG, or WebP | maximum 2 MB.{files[field.key] ? ' Selected and ready to upload when you save.' : ''}</p>}
+                            <ImagePreview src={previews[field.key] || formData[field.key] || ''} photo={whyBuyersPhoto} />
                           </div>
                         )}
                           </label>
@@ -639,10 +645,11 @@ export default function AdminHomepageContentPage() {
                 <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
                   {group.fields.map((field) => {
                     const imageLike = isImageLikeField(field.key);
+                    const whyBuyersPhoto = isWhyBuyersPhotoField(field.key);
                     const textarea = textareaPattern.test(field.key);
                     return (
                       <label key={field.key} className={textarea ? 'block md:col-span-2' : 'block'}>
-                        <span className="text-sm font-semibold text-slate-700">{field.label}</span>
+                        <span className="text-sm font-semibold text-slate-700">{whyBuyersPhoto ? `Card ${field.key.slice(-1)} photograph` : field.label}</span>
                         {textarea ? (
                           <textarea value={formData[field.key] ?? ''} onChange={(event) => updateField(field.key, event.target.value)} className="mt-1 min-h-24 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100" />
                         ) : (
@@ -650,11 +657,13 @@ export default function AdminHomepageContentPage() {
                         )}
                         {imageLike && (
                           <div>
+                            {whyBuyersPhoto && <label className="mt-3 flex w-fit cursor-pointer items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-900"><input type="checkbox" checked={whyBuyersVisibility[Number(field.key.slice(-1)) - 1]} disabled={whyBuyersVisibilityLoading || saving} onChange={(event) => { const cardIndex = Number(field.key.slice(-1)) - 1; setWhyBuyersVisibility((current) => current.map((value, index) => index === cardIndex ? event.target.checked : value)); }} className="h-5 w-5 accent-violet-700" />Show on homepage</label>}
                             <label className="mt-3 inline-flex cursor-pointer rounded-md border border-blue-200 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
-                              Upload image/icon
-                              <input type="file" accept={acceptedImageTypes.join(',')} onChange={handleFileChange(field.key)} className="sr-only" />
+                              {previews[field.key] || formData[field.key] ? (whyBuyersPhoto ? 'Replace Photo' : 'Replace image/icon') : (whyBuyersPhoto ? 'Choose Photo' : 'Upload image/icon')}
+                              <input type="file" accept={(whyBuyersPhoto ? acceptedImageTypes.filter((type) => type !== 'image/svg+xml') : acceptedImageTypes).join(',')} onChange={handleFileChange(field.key)} className="sr-only" />
                             </label>
-                            <ImagePreview src={previews[field.key] || formData[field.key] || ''} />
+                            {whyBuyersPhoto && <p className="mt-2 text-xs text-slate-500">PNG, JPG/JPEG, or WebP | maximum 2 MB.{files[field.key] ? ' Selected and ready to upload when you save.' : ''}</p>}
+                            <ImagePreview src={previews[field.key] || formData[field.key] || ''} photo={whyBuyersPhoto} />
                           </div>
                         )}
                       </label>
@@ -672,6 +681,7 @@ export default function AdminHomepageContentPage() {
           </div>
         )}
       </div>
+      {popupDetailsCard && loadedRow?.homepage_content_id && <WhyBuyersDetailsEditor homepageContentId={loadedRow.homepage_content_id} cardNumber={popupDetailsCard} cardTitle={formData[`section_5_name_${popupDetailsCard}`] || `Card ${popupDetailsCard}`} onClose={()=>setPopupDetailsCard(null)} />}
     </main>
   );
 }
